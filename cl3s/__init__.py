@@ -5,13 +5,14 @@ This package provides utilities for working with derivation trees,
 search spaces, and genetic programming operations such as crossover and mutation.
 """
 
-from .core import SearchSpace, DerivationTree, NT, T
+from .tree import DerivationTree
+from .search_space import SearchSpace
+from .synthesizer import SearchSpaceSynthesizer
 
 __version__ = "0.0.1"
 
 __all__ = [
     "SearchSpace",
     "DerivationTree",
-    "NT",
-    "T",
+    "SearchSpaceSynthesizer",
 ]

@@ -13,25 +13,48 @@ import random
 
 NT = TypeVar("NT", bound=Hashable) # type of non-terminals
 T = TypeVar("T", bound=Hashable) # type of terminals
+G = TypeVar("G", bound=Hashable)  # type of constants/literal group names
 
-from clsp.tree import Tree
-from clsp.solution_space import RHSRule
+from cosy.tree import Tree
+from cosy.solution_space import RHSRule
 
-from .core import SearchSpace, DerivationTree, NT, T
+if typing.TYPE_CHECKING:
+    from .search_space import SearchSpace
 
-@dataclass(slots=True)
-class DerivationTree(Tree[T], Generic[NT, T]):
+
+class DerivationTree(Tree[T], Generic[NT, T, G]):
     """
     A tree from clsp annotated with its derivation information.
     """
 
-    children: tuple["DerivationTree[NT, T]", ...] = field(default=())
+    children: tuple["DerivationTree[NT, T, G]", ...]
 
-    derived_from: NT | None = field(default=None)
-    rhs_rule: RHSRule[NT, T] | None = field(default=None)
-    is_literal: bool = field(default=False)
-    literal_group: str = field(default="")
-    frozen: bool = field(default=False)
+    derived_from: NT | None  # the non-terminal this tree is derived from, None if it is a literal
+    rhs_rule: RHSRule[NT, T, G]
+    is_literal: bool
+    literal_group: str | None  # if the tree is a literal, this is the group it belongs to
+    frozen: bool
+
+    def __init__(self, root: T, children: tuple["DerivationTree[NT, T, G]", ...],
+                 derived_from: NT | None, rhs_rule: RHSRule[NT, T, G],
+                 is_literal: bool, literal_group: str | None,
+                 frozen: bool = False):
+        """
+        Initialize a derivation tree.
+        :param root: The root of the tree.
+        :param children: The children of the tree.
+        :param derived_from: The non-terminal this tree is derived from.
+        :param rhs_rule: The rule used to derive this tree.
+        :param is_literal: Whether this tree is a literal.
+        :param literal_group: The group this literal belongs to, if applicable.
+        :param frozen: Whether this tree is frozen (i.e., cannot be mutated).
+        """
+        super().__init__(root, children)
+        self.derived_from = derived_from
+        self.rhs_rule = rhs_rule
+        self.is_literal = is_literal
+        self.literal_group = literal_group
+        self.frozen = frozen
 
 
     def to_labeled_adjacency_dict(self, next_index: int = 0) -> tuple[dict[int, list[int]], dict[int, T], int]:
@@ -53,7 +76,7 @@ class DerivationTree(Tree[T], Generic[NT, T]):
             i = n
         return edges, labels, i
 
-    def subtrees(self, path: list[int]) -> Generator[tuple["DerivationTree[NT, T]", list[int]], ...]:
+    def subtrees(self, path: list[int]) -> Generator[tuple["DerivationTree[NT, T, G]", list[int]], ...]:
         """
         Compute all subtrees of the tree and their paths, including the tree itself.
         :param path: The path to the current tree.
@@ -64,7 +87,7 @@ class DerivationTree(Tree[T], Generic[NT, T]):
             for subtree, child_path in child.subtrees(path + [i]):
                 yield subtree, child_path
 
-    def replace(self, path: list[int], subtree: "DerivationTree[NT, T]") -> "DerivationTree[NT, T]":
+    def replace(self, path: list[int], subtree: "DerivationTree[NT, T, G]") -> "DerivationTree[NT, T, G]":
         """
         Replace a subtree at the given path with another subtree.
         :param path: The path to the subtree to replace.
@@ -94,18 +117,18 @@ class DerivationTree(Tree[T], Generic[NT, T]):
         current.children = tuple(current.children[:path[-1]] + (subtree,) + current.children[path[-1] + 1:])
         return new_tree
 
-    def is_valid_crossover(self, primary_path: list[int], secondary_tree: "DerivationTree[NT, T]",
-                           search_space: SearchSpace[NT, T], max_depth: int | None = None) -> bool:
+    def is_valid_crossover(self, primary_path: list[int], secondary_tree: "DerivationTree[NT, T, G]",
+                           search_space: "SearchSpace[NT, T, G]", max_depth: int | None = None) -> bool:
         # TODO
         raise NotImplementedError("This method still needs to be implemented.")
 
-    def is_consistent_with(self, search_space: SearchSpace[NT, T]) -> bool:
+    def is_consistent_with(self, search_space: "SearchSpace[NT, T, G]") -> bool:
         # TODO
         raise NotImplementedError("This method still needs to be implemented.")
 
-    def crossover(self, secondary_derivation_tree: "DerivationTree[NT, T]",
-                  search_space: SearchSpace[NT, T], max_depth: int | None = None,
-                  seed: int | None = None) -> Union["DerivationTree[NT, T]", None]:
+    def crossover(self, secondary_derivation_tree: "DerivationTree[NT, T, G]",
+                  search_space: "SearchSpace[NT, T, G]", max_depth: int | None = None,
+                  seed: int | None = None) -> Union["DerivationTree[NT, T, G]", None]:
         """
         Perform a crossover operation with another derivation tree.
         Crossover is closed under the search space, meaning the resulting tree is guaranteed to be a member of the search space.
@@ -165,8 +188,8 @@ class DerivationTree(Tree[T], Generic[NT, T]):
         # if no offspring was created for any primary subtree, return None
         return None
 
-    def mutate(self, search_space: SearchSpace[NT, T],
-               max_depth: int | None = None, seed: int | None = None) -> Union["DerivationTree[NT, T]", None]:
+    def mutate(self, search_space: "SearchSpace[NT, T, G]",
+               max_depth: int | None = None, seed: int | None = None) -> Union["DerivationTree[NT, T, G]", None]:
         """
         Mutates the tree by replacing a random subtree with a new one sampled from the search space.
         Mutation is closed under the search space, meaning the resulting tree is guaranteed to be a member of the search space.
