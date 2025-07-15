@@ -1,5 +1,7 @@
 # cl3s/search_space.py
 
+"""Solution space given by a logic program."""
+
 from __future__ import annotations
 
 from collections import deque
@@ -27,7 +29,8 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
     It relies on DerivationTrees instead of Trees.
     """
 
-    def __init__(self, rules: dict[NT, deque[RHSRule[NT, T]]] | None = None):
+    @override
+    def __init__(self, rules: dict[NT, deque[RHSRule[NT, T, G]]] | None = None) -> None:
         """
         Initialize the SearchSpace with a set of rules.
         The rules should be provided as a dictionary mapping non-terminals to their possible right-hand sides.
@@ -53,6 +56,7 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
 
     # old methods from SolutionSpace, that are adapted for DerivationTree
 
+    @override
     def _enumerate_tree_vectors(
         self,
         non_terminals: Sequence[NT | None],
@@ -181,10 +185,13 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
 
         for n, exprs in self._rules.items():
             for expr in exprs:
-                if expr.non_terminals.issubset(self.nonterminals()):
+                if all(m in self.nonterminals() for m in expr.non_terminals):
                     for m in expr.non_terminals:
-                        if m in self.nonterminals():
-                            inverse_grammar[m].append((n, expr))
+                        inverse_grammar[m].append((n, expr))
+                #if expr.non_terminals.issubset(self.nonterminals()):
+                #    for m in expr.non_terminals:
+                #        if m in self.nonterminals():
+                #            inverse_grammar[m].append((n, expr))
                     for new_term in self._generate_new_trees(n, expr, existing_terms):
                         queues[n].put(new_term)
                         if n == start and new_term not in all_results:
