@@ -29,6 +29,9 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
     It relies on DerivationTrees instead of Trees.
     """
 
+    _annotated_rules: dict[NT, deque[tuple[RHSRule[NT, T, G], int]]]
+    _annotated_symbol_depths: dict[NT, int]
+
     @override
     def __init__(self, rules: dict[NT, deque[RHSRule[NT, T, G]]] | None = None) -> None:
         """
@@ -39,6 +42,115 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
 
 
     # new methods for SearchSpace
+    def annotations(self) -> tuple[dict[NT, deque[tuple[RHSRule[NT, T, G], int]]], dict[NT, int]]:
+        """
+        Following the grammar based initialization method (GBIM) for context free grammars,
+        we annotate terminals, nonterminals and rules with the expected minimum depth of generated terms.
+        In contrast to context free grammars, these depths are overapproximations, because we can not include the
+        evaluation of predicates in the computation of the expected depth.
+        But even this lower bounds of an expected depth should be a good enough approximation to compute an
+        initial population of terms with a suitable distribution of term depths.
+
+        The length of a terminal symbol is always 0, therefore we don't need to return annotations for terminals.
+        """
+
+        if self._annotated_rules is not None and self._annotated_symbol_depths is not None:
+            # if the rules and symbol depths are already annotated, we can return them directly
+            return self._annotated_rules, self._annotated_symbol_depths
+
+        # Because annotated and symbol_depths needs to be hashable, I wasn't able to use a dict for each of them...
+        # annotated: tuple[tuple[tuple[NT, RHSRule[NT, T]], int],...] = tuple()
+        annotated: dict[NT, deque[tuple[RHSRule[NT, T, G], int]]] = dict()
+
+        not_annotated: list[tuple[NT, RHSRule[NT, T, G]]] = [
+            (nt, rhs)
+            for nt, rules in self._rules.items()
+            for rhs in rules
+        ]
+
+        symbol_depths: dict[NT, int] = {}
+
+        nts: list[NT] = []
+
+        check = not_annotated.copy()
+        # every rule that only derives nonterminals has length 1
+        for nt, rhs in check:
+            if not list(rhs.non_terminals):
+                # rule only derives terminals
+                rs: deque[tuple[RHSRule[NT, T, G], int]] | None = annotated.get(nt)
+                # add the rule to the annotated rules
+                if rs is None:  # this might be ommited, since there are no rules with the same rhs annotated yet
+                    rs = deque()
+                    rs.append((rhs, 1))
+                # the next block can be ommited, since there are no rules with the same rhs annotated yet
+                # else:
+                #    for r, i in rs:
+                #        if r == rhs:
+                #            rs.remove((r, i))
+                #            rs.append((r, 1))
+                #            break
+                annotated[nt] = rs
+                not_annotated.remove((nt, rhs))
+                nts.append(nt)
+
+        assert len(annotated) > 0
+        assert all([list(rhs.non_terminals) for _, rhs in not_annotated])
+
+        for nt in nts:
+            # if a right hand side has the minmal length 1, the symbol also has this length
+            symbol_depths[nt] = 1
+
+        while not_annotated:
+            termination_check = not_annotated.copy()
+            for nt, rhs in termination_check:
+                assert (list(rhs.non_terminals))
+                # check if all nonterminals in rhs are already annotated
+                if all(s in symbol_depths.keys() for s in rhs.non_terminals):
+                    # the length of a rule is the maximum of its nonterminal lenghts + 1
+                    ris: deque[tuple[RHSRule[NT, T, G], int]] | None = annotated.get(nt)
+                    new_depth = max(symbol_depths[t] for t in rhs.non_terminals) + 1
+                    if ris is None:
+                        ris = deque()
+                    if rhs not in map(lambda x: x[0], ris):
+                        ris.append((rhs, new_depth))
+                    else:
+                        for r, i in ris:
+                            if r == rhs:
+                                ris.remove((r, i))
+                                ris.append((r, new_depth))
+                                break
+                    annotated[nt] = ris
+                    not_annotated.remove((nt, rhs))
+                    # The first time we derive a length for a right hand side, we can assume, that it is the minimum length and therefore set the symbol depth
+                    sd = symbol_depths.get(nt)
+                    if sd is None:
+                        symbol_depths[nt] = new_depth
+                    # rs == annotated[nt] and therefore corresponds to the annoted rules for nonterminal nt
+                    if all(rule in map(lambda x: x[0], ris) for rule in self._rules[nt]):
+                        # all rules of this nonterminal are already annotated
+                        # the length of a terminal symbol is the minimum of the length of its rules
+                        symbol_depths[nt] = min(map(lambda x: x[1], ris))
+            if termination_check == not_annotated:
+                # no more rules can be annotated
+                break
+
+        # if there are still rules that are not annotated, we have a problem with the grammar
+        if not_annotated:
+            raise ValueError(
+                f"Grammar contains problems. The following rules could not be annotated: {not_annotated} \n These rules have been annotated: {annotated} \n These symbols have been annotated: {symbol_depths}"
+            )
+
+        self._annotated_rules = annotated
+        self._annotated_symbol_depths = symbol_depths
+        return annotated, symbol_depths
+
+    def minimum_tree_depth(self, start: NT) -> int:
+        """
+        Compute a lower bound for the minimum depth of a tree generated by the grammar from the given nonterminal.
+        """
+        _, nt_length = self.annotations()
+        return nt_length[start]
+
 
     def sample_tree(self, non_terminal: NT, max_depth: int | None = None) -> "DerivationTree[NT, T, G]":
         """
