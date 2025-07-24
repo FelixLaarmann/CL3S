@@ -122,9 +122,8 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
         # TODO
         raise NotImplementedError("This method still needs to be implemented.")
 
-    def is_consistent_with(self, search_space: "SearchSpace[NT, T, G]") -> bool:
-        # TODO
-        raise NotImplementedError("This method still needs to be implemented.")
+    def is_consistent_with(self, search_space: SearchSpace[NT, T, G]) -> bool:
+        return search_space.contains_tree(self.derived_from, self)
 
     def crossover(self, secondary_derivation_tree: "DerivationTree[NT, T, G]",
                   search_space: "SearchSpace[NT, T, G]", max_depth: int | None = None,
