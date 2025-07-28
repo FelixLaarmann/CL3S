@@ -1,4 +1,4 @@
-combinatory-synthesizer @ git+https://github.com/tudo-seal/cosy-draft.git@b58d4c531d277bee31613ac85d077754758200ba
+combinatory-synthesizer @ git+https://github.com/tudo-seal/cosy-draft.git
 mypy==1.15.0
 mypy_extensions==1.1.0
 typing_extensions==4.13.2
