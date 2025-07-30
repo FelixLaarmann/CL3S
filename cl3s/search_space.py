@@ -221,13 +221,13 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
 
         while applicable:
             candidate, next_cs = random.choice(applicable)
+            applicable.remove((candidate, next_cs))
             tree = self.build_tree(nt, next_cs, candidate)
             if tree is not None:
                 return tree
-            applicable.remove((candidate, next_cs))
         return None
 
-    def sample(self, size: int, non_terminal: NT, max_depth: int | None = None) -> list[DerivationTree[NT, T, G]]:
+    def sample(self, size: int, non_terminal: NT, max_depth: int | None = None) -> set[DerivationTree[NT, T, G]]:
         """
         Sample a list of length size of random trees from the search space.
         """
@@ -239,24 +239,23 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
         if self.max_tree_depth < self.min_size:
             raise ValueError(f"max_tree_depth {self.max_tree_depth} is less than minimum tree depth {self.min_size}")
 
-        sample: list[DerivationTree[NT, T, G]] = []
-        for _ in range(size):
+        sample: set[DerivationTree[NT, T, G]] = set()
+        for _ in range(size*10):
             cs = 0
             term: DerivationTree[NT, T, G] | None = self.sample_random_term(non_terminal, cs)
-            while term is None:
+            while term is None:  # TODO: this is a bit risky for uninhabitated non_terminals...
                 term = self.sample_random_term(non_terminal, cs)
-            sample.append(term)
+            sample.add(term)
+            if len(sample) >= size:
+                break
         return sample
 
-    def sample_tree(self, non_terminal: NT) -> DerivationTree[NT, T, G]:
+    def sample_tree(self, non_terminal: NT, max_depth: int | None = None) -> DerivationTree[NT, T, G]:
         """
         Sample a random tree from the search space.
         """
-        self.min_size: int = self.minimum_tree_depth(non_terminal)
-        self.max_tree_depth = self.min_size + 10000
-        if self.max_tree_depth < self.min_size:
-            raise ValueError(f"max_tree_depth {self.max_tree_depth} is less than minimum tree depth {self.min_size}")
-        return self.sample_random_term(non_terminal, 0)
+        tree = self.sample(1, non_terminal, max_depth)
+        return tree.pop()  # return the only element in the set
 
 
     # old methods from SolutionSpace, that are adapted for DerivationTree

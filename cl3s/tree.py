@@ -16,7 +16,7 @@ T = TypeVar("T", bound=Hashable) # type of terminals
 G = TypeVar("G", bound=Hashable)  # type of constants/literal group names
 
 from cosy.tree import Tree
-from cosy.solution_space import RHSRule
+from cosy.solution_space import RHSRule, NonTerminalArgument
 
 if typing.TYPE_CHECKING:
     from .search_space import SearchSpace
@@ -117,10 +117,24 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
         current.children = tuple(current.children[:path[-1]] + (subtree,) + current.children[path[-1] + 1:])
         return new_tree
 
-    def is_valid_crossover(self, primary_path: list[int], secondary_tree: "DerivationTree[NT, T, G]",
+    def is_valid_crossover(self, primary_tree: "DerivationTree[NT, T, G]", secondary_tree: "DerivationTree[NT, T, G]",
                            search_space: "SearchSpace[NT, T, G]", max_depth: int | None = None) -> bool:
-        # TODO
-        raise NotImplementedError("This method still needs to be implemented.")
+        rule = primary_tree.rhs_rule
+        if rule == secondary_tree.rhs_rule:
+            # if the rules are the same, we can perform the crossover
+            return True
+        if len(rule.arguments) == len(secondary_tree.children):
+            substitution: dict[str, DerivationTree[NT, T, G]] = {}
+            for arg, child in zip(rule.arguments, secondary_tree.children):
+                if isinstance(arg, NonTerminalArgument):
+                    # if the argument is a non-terminal, check if the derived_from matches
+                    if child.derived_from != arg.origin:  # TODO: subtyping instead of equality?
+                        return False
+                    substitution[arg.name] = child
+            return all(predicate(substitution | secondary_tree.rhs_rule.literal_substitution)
+                       for predicate in rule.predicates)
+        else:
+            return False
 
     def is_consistent_with(self, search_space: SearchSpace[NT, T, G]) -> bool:
         return search_space.contains_tree(self.derived_from, self)
@@ -177,7 +191,7 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
                 if selected_secondary.frozen:
                     continue
                 # test if the selected secondary subtree can be inserted into the crossover point of the primary subtree
-                valid = self.is_valid_crossover(primary_path, selected_secondary, search_space, max_depth)
+                valid = self.is_valid_crossover(selected_primary, selected_secondary, search_space, max_depth)
                 if valid:
                     # perform the crossover
                     offspring = self.replace(primary_path, selected_secondary)

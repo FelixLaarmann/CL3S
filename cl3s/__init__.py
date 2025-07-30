@@ -73,7 +73,7 @@ class CL3S(Generic[T]):
         for tree in trees:
             yield tree.interpret()
 
-    def sample(self, query: Type) -> Iterable[Any]:
+    def sample(self, query: Type, max_count: int = 100) -> Iterable[Any]:
         """
         Samples the given query by constructing a solution space and sampling the resulting trees.
 
@@ -86,6 +86,6 @@ class CL3S(Generic[T]):
             raise TypeError(msg)
         search_space = self._synthesizer.construct_search_space(query).prune()
 
-        trees = search_space.sample(10, query)
+        trees = search_space.sample(max_count, query)
         for tree in trees:
             yield tree.interpret()

@@ -64,7 +64,7 @@ def main():
     query: Type = Constructor("fib")
 
     # solve the query and print the solutions
-    for solution in cosy.sample(query):
+    for solution in cosy.sample(query, 10):
         print(solution)
 
     for i in range(20):
