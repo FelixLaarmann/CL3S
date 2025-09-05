@@ -10,7 +10,7 @@ from collections.abc import Callable, Hashable, Sequence, Mapping, Iterable
 from itertools import product
 from queue import PriorityQueue
 
-from typing import Any, Generic, TypeVar, Union, Generator, override
+from typing import Any, Generic, TypeVar, Union, Generator#, override
 import typing
 from types import FunctionType
 
@@ -32,7 +32,7 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
     _annotated_rules: dict[NT, deque[tuple[RHSRule[NT, T, G], int]]] | None = None
     _annotated_symbol_depths: dict[NT, int] | None = None
 
-    @override
+    #@override
     def __init__(self, rules: dict[NT, deque[RHSRule[NT, T, G]]] | None = None) -> None:
         """
         Initialize the SearchSpace with a set of rules.
@@ -231,6 +231,7 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
         """
         Sample a list of length size of random trees from the search space.
         """
+        #TODO: the resulting set has the wrong size, fix this!
         self.min_size: int = self.minimum_tree_depth(non_terminal)
         if max_depth is not None:
             self.max_tree_depth = max_depth
@@ -261,7 +262,7 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
     # old methods from SolutionSpace, that are adapted for DerivationTree
 
 
-    @override
+    #@override
     def prune(self) -> SearchSpace[NT, T, G]:
         """Keep only productive rules."""
 
@@ -299,7 +300,7 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
             )
         )
 
-    @override
+    #@override
     def _enumerate_tree_vectors(
         self,
         non_terminals: Sequence[NT | None],
@@ -319,7 +320,7 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
                     )
                     yield from product(*arg_lists)
 
-    @override
+    #@override
     def _generate_new_trees(
         self,
         lhs: NT,
@@ -475,7 +476,6 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
             current_bucket_size += 1
         return
 
-    # TODO: refactor this method to use the new DerivationTree class and work with consistency checks
     def contains_tree(self, start: NT, tree: DerivationTree[NT, T, G]) -> bool:
         """Check if the solution space contains a given `tree` derivable from `start`."""
         if start not in self.nonterminals():

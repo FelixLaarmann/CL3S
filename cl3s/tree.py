@@ -10,6 +10,9 @@ from typing import Any, Generic, Optional, TypeVar, Union, Generator
 import typing
 from dataclasses import dataclass, field
 import random
+import networkx as nx
+import grakel
+from grakel.utils import graph_from_networkx
 
 NT = TypeVar("NT", bound=Hashable) # type of non-terminals
 T = TypeVar("T", bound=Hashable) # type of terminals
@@ -57,24 +60,33 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
         self.frozen = frozen
 
 
-    def to_labeled_adjacency_dict(self, next_index: int = 0) -> tuple[dict[int, list[int]], dict[int, T], int]:
-        """
-        Convert the tree to a tuple of a dictionary, mapping node indices to their argument indices, a dictionary
-        mapping node indices to combinators, and the highest index from the mapping.
-        :param next_index: The next index to use for the root node.
-        :return: A tuple containing the edges dictionary, labels dictionary, and the next index.
-        """
-        edges: dict[int, list[int]] = {next_index: []}
-        labels: dict[int, T] = {next_index: self.root}
-        i = next_index + 1
-        for child in self.children:
-            edges[next_index].append(i)
-            labels[i] = child.root
-            child_edges, child_labels, n = child.to_labeled_adjacency_dict(i)
-            edges.update(child_edges)
-            labels.update(child_labels)
-            i = n
-        return edges, labels, i
+    def to_indexed_nx_digraph(self, start_index: int = 0) -> tuple[nx.DiGraph, dict[int, T]]:
+        if self.is_literal:
+            G = nx.DiGraph()
+            G.add_node(start_index, symbol=str(self.root), literal=True, type=self.literal_group)
+            return G, {start_index: self.root}
+        elif not self.children:
+            G = nx.DiGraph()
+            G.add_node(start_index, symbol=str(self.root), literal=False, type=self.derived_from)
+            return G, {start_index: self.root}
+        else:
+            G = nx.DiGraph()
+            G.add_node(start_index, symbol=str(self.root), literal=False, type=self.derived_from)
+            index_mapping = {start_index: self.root}
+            current_index = start_index + 1
+            for child in self.children:
+                Gc, child_mapping = child.to_indexed_nx_digraph(current_index)
+                G = nx.compose(G, Gc)
+                G.add_edge(start_index, current_index, argument_type=str(child.derived_from) if child.derived_from is not None else str(child.literal_group))
+                index_mapping.update(child_mapping)
+                current_index += len(child_mapping)
+            return G, index_mapping
+
+    def to_grakel_graph(self) -> grakel.Graph:
+        nx_graph, node_labels = self.to_indexed_nx_digraph()
+        gk_graph = graph_from_networkx(nx_graph.to_undirected(), node_labels_tag='symbol', edge_labels_tag='argument_type')
+        # I hate grakel! Why do they write tuple in their docs when it is actually a str?!
+        return gk_graph
 
     def subtrees(self, path: list[int]) -> Generator[tuple["DerivationTree[NT, T, G]", list[int]], ...]:
         """

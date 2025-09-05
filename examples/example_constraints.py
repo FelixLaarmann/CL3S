@@ -9,6 +9,9 @@ from collections.abc import Container
 from cl3s import CL3S
 from cl3s import DSL
 from cl3s import Constructor, Literal, Type, Var
+from cl3s import SearchSpaceSynthesizer
+
+import networkx as nx
 
 
 def empty() -> str:
@@ -83,6 +86,17 @@ def main():
     # solve the query and print the solutions
     for solution in cosy.sample(query):
         print(solution)
+
+    sss = SearchSpaceSynthesizer(component_specifications, parameter_space, {})
+    search_space = sss.construct_search_space(query).prune()
+    trees = search_space.sample(10, query)
+    for tree in trees:
+        G, d = tree.to_indexed_nx_digraph()
+        PG = nx.nx_pydot.to_pydot(G)
+        pos = nx.nx_pydot.graphviz_layout(G, prog="dot")
+        print(PG)
+        print(pos)
+        #nx.draw(G, with_labels=True)
 
 
 if __name__ == "__main__":

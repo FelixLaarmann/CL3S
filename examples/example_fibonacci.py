@@ -6,7 +6,9 @@ Overall description of this example goes here.
 from cl3s import CL3S
 from cl3s import DSL
 from cl3s import Constructor, Literal, Type, Var
+from cl3s import SearchSpaceSynthesizer
 
+import networkx as nx
 
 def fib_zero() -> int:
     """
@@ -67,12 +69,22 @@ def main():
     for solution in cosy.sample(query, 10):
         print(solution)
 
-    for i in range(20):
+    for i in range(5):
         # query for Fibonacci numbers at index i
         query = Constructor("fib") & Constructor("at", Literal(i, "int"))
 
         # solve the query and print the only solution
         print(i, next(iter(cosy.solve(query))))
+
+    sss = SearchSpaceSynthesizer(component_specifications, parameter_space, {})
+    search_space = sss.construct_search_space(query).prune()
+    trees = search_space.sample(10, query)
+    for tree in trees:
+        G, d = tree.to_indexed_nx_digraph()
+        PG = nx.nx_pydot.to_pydot(G)
+        print(PG)
+        print(d)
+        # nx.draw(G, with_labels=True)
 
 
 if __name__ == "__main__":
