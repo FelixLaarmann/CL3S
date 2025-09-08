@@ -15,3 +15,5 @@ grakel==0.1.10
 pydot
 gpytorch==1.14
 torch==2.6.0
+pandas
+matplotlib

@@ -10,7 +10,7 @@ import typing
 
 from cl3s.scikit.graph_kernel import WeisfeilerLehmanKernel
 
-from acquisition_function import AcquisitionFunction, AcquisitionFunctionOptimization, ExpectedImprovement
+from .acquisition_function import ExpectedImprovement, EvolutionaryAcquisitionFunctionOptimization
 
 from ..search_space import SearchSpace
 from ..tree import DerivationTree
@@ -22,14 +22,15 @@ G = TypeVar("G", bound=Hashable)  # type of constants/literal group names
 
 class BayesianOptimization(Generic[NT, T, G]):
 
-    def __init__(self, grammar: SearchSpace[NT, T, G], request: NT,
+    def __init__(self, search_space: SearchSpace[NT, T, G], request: NT,
                  kernel: GenericKernelMixin = WeisfeilerLehmanKernel()):
-        self.search_space = grammar
+        self.search_space = search_space
         self.request = request
-        self.kernel = WeisfeilerLehmanKernel()
+        self.kernel = kernel
 
-    def bayesian_optimisation(self, n_iters, obj_fun: Callable[DerivationTree[NT, T, G], float], x0=None, n_pre_samples=5,
-                              gp_params=None, alpha=1e-5, epsilon=1e-7, greater_is_better: bool = False):
+    def bayesian_optimisation(self, n_iters, obj_fun, x0=None,
+                              n_pre_samples=10,
+                              gp_params=None, alpha=1e-10, greater_is_better: bool = False):
         """ bayesian_optimisation
 
         Uses Gaussian Processes to optimise the loss function `sample_loss`.
@@ -58,11 +59,10 @@ class BayesianOptimization(Generic[NT, T, G]):
 
         if x0 is None:
             # Sample n_pre_samples initial points from grammar
-            raise NotImplementedError()
-        else:
-            for tree in x0:
-                x_list.append(tree)
-                y_list.append(obj_fun(tree))
+            x0 = list(self.search_space.sample(n_pre_samples, self.request))
+        for tree in x0:
+            x_list.append(tree)
+            y_list.append(obj_fun(tree))
 
         xp = np.array(x_list)
         yp = np.array(y_list)
@@ -71,13 +71,15 @@ class BayesianOptimization(Generic[NT, T, G]):
         if gp_params is not None:
             model = GaussianProcessRegressor(**gp_params)
         else:
-            kernel = self.kernel
-            model = GaussianProcessRegressor(kernel=kernel,
+            model = GaussianProcessRegressor(kernel=self.kernel,
                                              alpha=alpha,
                                              # n_restarts_optimizer=10,
+                                             optimizer=None,  # we currently need this, to prevent derivation of the kernel
                                              normalize_y=True)
 
         for n in range(n_iters):
+
+            print("iteration:", n)
 
             model.fit(xp, yp)
 
@@ -85,7 +87,16 @@ class BayesianOptimization(Generic[NT, T, G]):
             acquisition_function = ExpectedImprovement(model, greater_is_better)
 
             # Sample next tree
-            next_sample = AcquisitionFunctionOptimization.evolutionary_acquisition_function_optimization()
+            optimizer = EvolutionaryAcquisitionFunctionOptimization(self.search_space,
+                                                                    self.request,
+                                                                    acquisition_function,
+                                                                    greater_is_better=greater_is_better,
+                                                                    population_size=50,
+                                                                    reproduction_rate=0.1,
+                                                                    generation_limit=10)
+
+            next_sample = optimizer()
+            print(next_sample in x_list)
 
             # Duplicates will break the GP. In case of a duplicate, we will randomly sample a next query point.
             while next_sample in x_list:
@@ -94,6 +105,7 @@ class BayesianOptimization(Generic[NT, T, G]):
 
             # objective function evaluation for new derivation tree
             cv_score = obj_fun(next_sample)
+            print(cv_score)
 
             # Update lists
             x_list.append(next_sample)
@@ -103,5 +115,9 @@ class BayesianOptimization(Generic[NT, T, G]):
             xp = np.array(x_list)
             yp = np.array(y_list)
 
-        return xp, yp
+        if greater_is_better:
+            best_tree = xp[np.argmax(yp)]
+        else:
+            best_tree = xp[np.argmin(yp)]
+        return best_tree, xp, yp
 

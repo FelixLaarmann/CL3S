@@ -84,20 +84,22 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
 
     def to_grakel_graph(self) -> grakel.Graph:
         nx_graph, node_labels = self.to_indexed_nx_digraph()
-        gk_graph = graph_from_networkx(nx_graph.to_undirected(), node_labels_tag='symbol', edge_labels_tag='argument_type')
+        gk_graph = graph_from_networkx([nx_graph.to_undirected()], node_labels_tag='symbol', edge_labels_tag='argument_type')
         # I hate grakel! Why do they write tuple in their docs when it is actually a str?!
         return gk_graph
 
-    def subtrees(self, path: list[int]) -> Generator[tuple["DerivationTree[NT, T, G]", list[int]], ...]:
+    def subtrees(self, path: list[int]) -> list[tuple["DerivationTree[NT, T, G]", list[int]]]:
         """
-        Compute all subtrees of the tree and their paths, including the tree itself.
+        Compute all subtrees of the tree and their paths including the tree itself.
         :param path: The path to the current tree.
         :return: A list of tuples, where each tuple contains a subtree and its path.
         """""
+        result = [(self, path)]
         for i, child in enumerate(self.children):
             # recursively compute the subtrees of the children
             for subtree, child_path in child.subtrees(path + [i]):
-                yield subtree, child_path
+                result.append((subtree, child_path))
+        return result
 
     def replace(self, path: list[int], subtree: "DerivationTree[NT, T, G]") -> "DerivationTree[NT, T, G]":
         """
@@ -165,7 +167,9 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
         """
         # compute all subtrees and their paths, excluding the whole primary derivation tree (self)
         primary_subtrees = list(self.subtrees([]))
-        primary_subtrees.remove((self, []))
+        # TODO: this case should not occur
+        if (self, []) in primary_subtrees:
+            primary_subtrees.remove((self, []))
         # compute all subtrees of the secondary derivation tree, including the secondary derivation tree itself
         secondary_subtrees = list(secondary_derivation_tree.subtrees([]))
         # choose a random primary subtree as crossover point, until crossover is successful

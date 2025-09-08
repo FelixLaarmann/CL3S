@@ -34,6 +34,9 @@ __all__ = [
     "SearchSpace",
     "DerivationTree",
     "SearchSpaceSynthesizer",
+    "Specification",
+    "ParameterSpace",
+    "Taxonomy",
 ]
 
 

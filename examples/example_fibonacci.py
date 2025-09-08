@@ -68,7 +68,7 @@ def main():
     # solve the query and print the solutions
     for solution in cosy.sample(query, 10):
         print(solution)
-
+"""
     for i in range(5):
         # query for Fibonacci numbers at index i
         query = Constructor("fib") & Constructor("at", Literal(i, "int"))
@@ -85,7 +85,7 @@ def main():
         print(PG)
         print(d)
         # nx.draw(G, with_labels=True)
-
+"""
 
 if __name__ == "__main__":
     main()

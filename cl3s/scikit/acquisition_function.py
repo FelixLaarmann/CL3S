@@ -10,7 +10,7 @@ from collections.abc import Callable, Hashable, Sequence
 from typing import Any, Generic, Optional, TypeVar, Union, Generator
 import typing
 
-from cl3s.genetic_programming.evolutionary_search import EvolutionarySearch
+from cl3s.genetic_programming.evolutionary_search import TournamentSelection
 from cl3s.search_space import SearchSpace
 
 NT = TypeVar("NT", bound=Hashable) # type of non-terminals
@@ -63,28 +63,24 @@ class ExpectedImprovement(AcquisitionFunction[NT, T, G]):
 
 class AcquisitionFunctionOptimization(Generic[NT, T, G]):
 
-    def __init__(self, search_space: SearchSpace[NT, T, G], acquisition_function: AcquisitionFunction[NT, T, G],
+    def __init__(self, search_space: SearchSpace[NT, T, G], request: NT, acquisition_function: AcquisitionFunction[NT, T, G],
                  greater_is_better: bool = False):
         self.search_space = search_space
         self.acquisition_function = acquisition_function
         self.greater_is_better = greater_is_better
+        self.request = request
 
-    def __call__(self, t: DerivationTree[NT, T, G]):
+    def __call__(self):
         raise NotImplementedError("Subclasses must implement this method.")
 
 
 class EvolutionaryAcquisitionFunctionOptimization(AcquisitionFunctionOptimization[NT, T, G]):
 
-    def __init__(self, search_space: SearchSpace[NT, T, G], acquisition_function: AcquisitionFunction[NT, T, G],
-                 population_size=100, reproduction_rate=0.5, generation_limit=100, greater_is_better: bool = False):
-        super().__init__(search_space, acquisition_function, greater_is_better)
-        self.evolutionary_search = EvolutionarySearch(
-            search_space=self.search_space,
-            fitness_function=self.acquisition_function,
-            population_size=population_size,
-            reproduction_rate=reproduction_rate,
-            generation_limit=generation_limit
-        )
+    def __init__(self, search_space: SearchSpace[NT, T, G], request: NT, acquisition_function: AcquisitionFunction[NT, T, G],
+                 population_size=10, reproduction_rate=0.2, generation_limit=5, greater_is_better: bool = False):
+        super().__init__(search_space, request, acquisition_function, greater_is_better)
+        self.evolutionary_search = TournamentSelection(search_space, request, acquisition_function, population_size,
+                                                       reproduction_rate, generation_limit)
 
-    def __call__(self, t: DerivationTree[NT, T, G]):
-        return self.evolutionary_search.optimize(greater_is_better=self.greater_is_better)
+    def __call__(self):
+        return self.evolutionary_search.optimize()

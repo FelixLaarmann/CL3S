@@ -156,14 +156,14 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
             if cs + 1 > self.max_tree_depth:
                 return None
             # rule only derives terminals, therefore arguments has no nonterminals, but to silence the type checker:
-            params: list[G] = [lit.origin for lit in candidate.arguments if isinstance(lit, ConstantArgument)]
+            params: list[G] = [lit for lit in candidate.arguments if isinstance(lit, ConstantArgument)]
             cands: tuple[DerivationTree[NT, T, G], ...] = tuple(
                 map(lambda p: DerivationTree(p.value, tuple(),
                                              derived_from=None, rhs_rule=candidate, frozen=False,
                                              is_literal=True, literal_group=p.origin), params))
             if all(predicate({}) for predicate in candidate.predicates):
                 return DerivationTree(candidate.terminal, cands, derived_from=nt, rhs_rule=candidate,
-                                      is_literal=True, literal_group=None, frozen=False)
+                                      is_literal=False, literal_group=None, frozen=False)
             else:
                 return None
         else:
@@ -241,14 +241,17 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
             raise ValueError(f"max_tree_depth {self.max_tree_depth} is less than minimum tree depth {self.min_size}")
 
         sample: set[DerivationTree[NT, T, G]] = set()
-        for _ in range(size*10):
+        # for _ in range(size*10):
+        while len(sample) < size:
+            # this only works for big search spaces and small sample sizes.
+            # If the sample size is near the size of the search space, this might loop for a long time
             cs = 0
             term: DerivationTree[NT, T, G] | None = self.sample_random_term(non_terminal, cs)
-            while term is None:  # TODO: this is a bit risky for uninhabitated non_terminals...
+            while term is None:
                 term = self.sample_random_term(non_terminal, cs)
             sample.add(term)
-            if len(sample) >= size:
-                break
+            # if len(sample) >= size:
+            #    break
         return sample
 
     def sample_tree(self, non_terminal: NT, max_depth: int | None = None) -> DerivationTree[NT, T, G]:
