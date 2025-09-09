@@ -1,6 +1,9 @@
+import sys
 from typing import Any
 import pandas as pd
 import numpy as np
+
+from math import sin
 
 import torch
 from torch import nn
@@ -47,6 +50,7 @@ class Simple_DNN_Repository:
         self.batch_size = batch_sizes
         self.epochs = epochs
         self.train_dataset = dataset
+        self.initial_weights = {}
 
     def delta(self) -> dict[str, list[Any]]:
         return {
@@ -210,13 +214,25 @@ class Simple_DNN_Repository:
             #  self.test_loop(dataloader, model, loss_fn)
         return self.test_loop(dataloader, model, loss_fn)
 
+    # Try to make the obj_fun a bit more deterministic by reusing the initial weights for the same layer dimensions
+    def linear_layer(self, i, o, b):
+        if self.initial_weights.get((i, o)) is None:
+            layer = nn.Linear(i, o, b)
+            self.initial_weights[(i, o)] = layer.weight
+            return layer
+        else:
+            layer = nn.Linear(i, o, b)
+            layer.weight = self.initial_weights[(i, o)]
+            return layer
+
+
     def torch_algebra(self):
         return {
             "System": (lambda i, o, n, lr, ep, bs, data, m, opt, l: self.system(data, m, l, opt, bs, ep)),
             "Layer": (lambda n, b, af: (b, af)),
-            "Model": (lambda i, o, l: nn.Sequential(nn.Linear(i, o, l[0]), nn.Softmax(dim=1))),  # , l[1])),
+            "Model": (lambda i, o, l: nn.Sequential(self.linear_layer(i, o, l[0]), nn.Softmax(dim=1))),  # , l[1])),
             "Model_cons": (lambda i, o, neurons, n, m, l, model:
-                           nn.Sequential(nn.Linear(i, neurons, l[0]), l[1]).extend(model)),
+                           nn.Sequential(self.linear_layer(i, neurons, l[0]), l[1]).extend(model)),
             "ReLu": nn.ReLU(),
             "ELU": nn.ELU(),
             "Sigmoid": nn.Sigmoid(),
@@ -235,7 +251,7 @@ y_train_tensor = torch.tensor(train_labels)
 
 dataset = torch.utils.data.TensorDataset(x_train_tensor, y_train_tensor)
 
-repo = Simple_DNN_Repository([0.01, 0.001, 0.0001], [3, 4] + list(range(5, 30, 5)), 5, [8], [100], dataset)
+repo = Simple_DNN_Repository([0.01, 0.001, 0.0001], [3, 4] + list(range(5, 30, 5)), 5, [4, 8], [100], dataset)
 
 target = (Constructor("system",
                       Constructor("input_dim", Literal(4, "dimension"))
@@ -244,7 +260,7 @@ target = (Constructor("system",
           #& Constructor("learning_rate", Literal(0.01, "learning_rate"))
           #& Constructor("hidden_layer", Literal(3, "hidden"))
           #& Constructor("epochs", Literal(100, "epochs"))
-          & Constructor("batch_size", Literal(8, "batch_size"))
+          #& Constructor("batch_size", Literal(8, "batch_size"))
           )
 
 synthesizer = SearchSpaceSynthesizer(repo.gamma(), repo.delta(), {})
@@ -282,12 +298,12 @@ if __name__ == "__main__":
 
     best = search.optimize()
     """
-    best, xp, yp = optimizer.bayesian_optimisation(300, obj_fun, n_pre_samples=50, greater_is_better=True)
+    best, xp, yp = optimizer.bayesian_optimisation(10, obj_fun, n_pre_samples=20,
+                                                   greater_is_better=True)
     print(best)
     list_x = list(xp)
     list_y = list(yp)
     print(list_y[list_x.index(best)])
-
 
 
 
