@@ -43,6 +43,14 @@ class DAGRepository:
     =                                                                                            (derived simplification law)
     swap(m + n + p, m+n, p)
 
+    before(edge(), x)
+    =                                                                    (left neutrality of edge for before)
+    x
+
+    before(x, edge())
+    =                                                                     (right neutrality of edge for before)
+    x
+
 
     These laws will be interpreted as directed equalities, such that they correspond to the following
     term rewriting system:
@@ -84,13 +92,12 @@ class DAGRepository:
     ->
     beside(copy(n+m, x), y)
 
-
     From our FSCD-paper "Restricting tree grammars with term rewriting systems" we know,
     that it should be sufficient to define a term-predicate that forbids all left-hand sides of the rules,
     to describe the set of combinatory terms, that are normal forms of the term rewriting system.
     """
 
-    def __init__(self, dimension_upper_bound: int, dimension_lower_bound: int = 0):
+    def __init__(self, dimension_upper_bound: int, dimension_lower_bound: int = 1):
         self.dimension_upper_bound: int = dimension_upper_bound
         self.dimension_lower_bound: int = dimension_lower_bound
         self.dimension: Iterable[int] = range(self.dimension_lower_bound, self.dimension_upper_bound + 1)
@@ -166,7 +173,7 @@ class DAGRepository:
 
     def delta(self) -> dict[str, Any]:
         return self.base_delta() | {
-            "dimension": self.dimension
+            "dimension": self.dimension,
         }
 
     def gamma(self):
@@ -174,14 +181,16 @@ class DAGRepository:
             "edge": Constructor("graph",
                             Constructor("input", Literal(1, "dimension")) &
                             Constructor("output", Literal(1, "dimension")) &
-                            Constructor("size", Literal(1, "nat"))),  # Constructor("size", Literal(0, "nat")))),
+                            Constructor("edge_size", Literal(1, "nat")) &
+                            Constructor("vertex_size", Literal(0, "nat"))),
             "vertex": DSL()
             .parameter("m", "dimension")
             .parameter("n", "dimension")
             .suffix(Constructor("graph",
                             Constructor("input", Var("m")) &
                             Constructor("output", Var("n")) &
-                            Constructor("size", Literal(1, "nat")))),
+                            Constructor("edge_size", Literal(0, "nat")) &
+                            Constructor("vertex_size", Literal(1, "nat")))),
             "beside": DSL()
             .parameter("m", "dimension")
             .parameter("n", "dimension")
@@ -189,64 +198,83 @@ class DAGRepository:
             .parameter("o", "dimension")
             .parameter("p", "dimension", lambda v: [v["i"] - v["m"]])
             .parameter("q", "dimension", lambda v: [v["o"] - v["n"]])
-            .parameter("s3", "nat")
-            .parameter("s1", "nat", lambda v: range(0, v["s3"] + 1))
-            .parameter("s2", "nat", lambda v: [v["s3"] - v["s1"]])
+            .parameter("es3", "nat")
+            .parameter("es1", "nat", lambda v: range(0, v["es3"] + 1))
+            .parameter("es2", "nat", lambda v: [v["es3"] - v["es1"]])
+            .parameter("vs3", "nat")
+            .parameter("vs1", "nat", lambda v: range(0, v["vs3"] + 1))
+            .parameter("vs2", "nat", lambda v: [v["vs3"] - v["vs1"]])
             .argument("x", Constructor("graph",
                                   Constructor("input", Var("m")) &
-                                  Constructor("output", Var("n")) &
-                                  Constructor("size", Var("s1"))))
+                                  Constructor("output", Var("n"))&
+                                  Constructor("edge_size", Var("es1")) &
+                                  Constructor("vertex_size", Var("vs1"))))
             .argument("y", Constructor("graph",
                                   Constructor("input", Var("p")) &
                                   Constructor("output", Var("q")) &
-                                  Constructor("size", Var("s2"))))
+                                  Constructor("edge_size", Var("es2")) &
+                                  Constructor("vertex_size", Var("vs2"))))
             .suffix(Constructor("graph",
                             Constructor("input", Var("i")) &
                             Constructor("output", Var("o")) &
-                            Constructor("size", Var("s3")))),
+                            Constructor("edge_size", Var("es3")) &
+                            Constructor("vertex_size", Var("vs3")))),
             "before": DSL()
+            .parameter("es3", "nat")  # before introduces n new edges, connecting two graphs horizontally
+            .parameter("n", "dimension", lambda v: range(self.dimension_lower_bound, v["es3"] + 1))
+            .parameter("es1", "nat", lambda v: range(0, v["es3"] - v["n"] + 1))
+            .parameter("es2", "nat", lambda v: [v["es3"] - v["es1"]])
+            .parameter("vs3", "nat")
+            .parameter("vs1", "nat", lambda v: range(0, v["vs3"] + 1))
+            .parameter("vs2", "nat", lambda v: [v["vs3"] - v["vs1"]])
             .parameter("m", "dimension")
-            .parameter("n", "dimension")
             .parameter("p", "dimension")
-            .parameter("s3", "nat")
-            .parameter("s1", "nat", lambda v: range(0, v["s3"] + 1))
-            .parameter("s2", "nat", lambda v: [v["s3"] - v["s1"]])
             .argument("x", Constructor("graph",
-                                  Constructor("input", Var("m")) &
-                                  Constructor("output", Var("n")) &
-                                  Constructor("size", Var("s1"))))
+                                       Constructor("input", Var("m")) &
+                                       Constructor("output", Var("n")) &
+                                       Constructor("edge_size", Var("es1")) &
+                                       Constructor("vertex_size", Var("vs1"))))
             .argument("y", Constructor("graph",
-                                  Constructor("input", Var("n")) &
-                                  Constructor("output", Var("p")) &
-                                  Constructor("size", Var("s2"))))
+                                       Constructor("input", Var("n")) &
+                                       Constructor("output", Var("p")) &
+                                       Constructor("edge_size", Var("es2")) &
+                                       Constructor("vertex_size", Var("vs2"))))
             .suffix(Constructor("graph",
                             Constructor("input", Var("m")) &
                             Constructor("output", Var("p")) &
-                            Constructor("size", Var("s3")))),
+                            Constructor("edge_size", Var("es3")) &
+                            Constructor("vertex_size", Var("vs3")))),
             "swap": DSL()
             .parameter("io", "dimension")
             .parameter("m", "dimension", lambda v: range(1, v["io"]))  # 0 < m < io, swapping zero connections is neutral
             .parameter("n", "dimension", lambda v: [v["io"] - v["m"]])
+            .parameter("s", "nat", lambda v: [v["io"]])  # s is io cast from dimension to nat
             .suffix(Constructor("graph",
                             Constructor("input", Var("io")) &
                             Constructor("output", Var("io")) &
-                            Constructor("size", Literal(1, "nat")))),  # Constructor("size", Literal(0, "nat")))),
+                            Constructor("edge_size", Var("s")) &
+                            Constructor("vertex_size", Literal(0, "nat")))),  # Constructor("size", Literal(0, "nat")))),
             "copy": DSL()
-            .parameter("m", "dimension", lambda _: range(1, self.dimension_upper_bound + 1))  # m > 0, otherwise // is bad
             .parameter("i", "dimension")
             .parameter("o", "dimension")
-            .parameter("p", "dimension", lambda v: [v["i"] // v["m"]]) # dimensionsberechnung so falsch!
+            .parameter("m", "dimension",
+                       lambda v: [x for x in range(1, max(v["i"], v["o"])) if v["i"] % x == 0 and v["o"] % x == 0])  # m must be a common divisor of i and o
+            .parameter("p", "dimension", lambda v: [v["i"] // v["m"]])
             .parameter("q", "dimension", lambda v: [v["o"] // v["m"]])
-            .parameter("s2", "nat")
-            .parameter("s1", "nat", lambda v: [v["s2"] // v["m"]])
+            .parameter("es2", "nat")
+            .parameter("es1", "nat", lambda v: [x for x in range(1, v["es2"] + 1) if v["es2"] % v["m"] == 0])  # es1 must be a multiple of m
+            .parameter("vs2", "nat")
+            .parameter("vs1", "nat", lambda v: [x for x in range(1, v["vs2"] + 1) if v["vs2"] % v["m"] == 0])  # vs1 must be a multiple of m
             .argument("x", Constructor("graph",
                                   Constructor("input", Var("p")) &
                                   Constructor("output", Var("q")) &
-                                  Constructor("size", Var("s1"))))
+                                  Constructor("edge_size", Var("es1")) &
+                                  Constructor("vertex_size", Var("vs1"))))
             .suffix(Constructor("graph",
                             Constructor("input", Var("i")) &
                             Constructor("output", Var("o")) &
-                            Constructor("size", Var("s2")))),
+                            Constructor("edge_size", Var("es2")) &
+                            Constructor("vertex_size", Var("vs2")))),
 
         }
 
@@ -257,9 +285,10 @@ if __name__ == "__main__":
     target = Constructor("graph",
                     Constructor("input", Literal(1, "dimension")) &
                     Constructor("output", Literal(1, "dimension")) &
-                    Constructor("size", Literal(10, "nat")))
+                    Constructor("edge_size", Literal(4, "nat")) &
+                    Constructor("vertex_size", Literal(3, "nat")))
     synthesizer = SearchSpaceSynthesizer(repo.gamma(), repo.delta(), {})
     search_space = synthesizer.construct_search_space(target).prune()
-    trees = search_space.enumerate_trees(target, 100)
+    trees = search_space.sample(10, target)
     for t in trees:
         print(t)
