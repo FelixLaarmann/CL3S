@@ -298,7 +298,7 @@ if __name__ == "__main__":
 
     best = search.optimize()
     """
-    best, xp, yp = optimizer.bayesian_optimisation(10, obj_fun, n_pre_samples=20,
+    best, xp, yp = optimizer.bayesian_optimisation(5, obj_fun, n_pre_samples=10,
                                                    greater_is_better=True)
     print(best)
     list_x = list(xp)

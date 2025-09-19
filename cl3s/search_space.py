@@ -231,7 +231,6 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
         """
         Sample a list of length size of random trees from the search space.
         """
-        #TODO: the resulting set has the wrong size, fix this!
         self.min_size: int = self.minimum_tree_depth(non_terminal)
         if max_depth is not None:
             self.max_tree_depth = max_depth
