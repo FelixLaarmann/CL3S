@@ -271,21 +271,24 @@ class DAGRepository:
                             Constructor("vertex_size", Literal(0, "nat"))),
             "vertex": DSL()
             .parameter("m", "dimension")
-            .parameter("n", "dimension")
+            .parameter("n", "dimension",
+                       lambda v: range(max(1, self.dimension_lower_bound), self.dimension_upper_bound + 1)
+                       if v["m"] == 0 else range(self.dimension_lower_bound, self.dimension_upper_bound + 1))
+            .parameter("es", "nat", lambda v: [v["m"] + v["n"]])
             .suffix(Constructor("graph",
                             Constructor("input", Var("m")) &
                             Constructor("output", Var("n")) &
-                            Constructor("edge_size", Literal(0, "nat")) &
+                            Constructor("edge_size", Var("es")) &
                             Constructor("vertex_size", Literal(1, "nat")))),
-            "beside": DSL()
-            .parameter("m", "dimension")
-            .parameter("n", "dimension")
-            .parameter("i", "dimension")
-            .parameter("o", "dimension")
+            "beside": DSL() # only parallel composition of graphs with in and out > 0 is allowed, otherwise disconnected graphs would be possible TODO: check paper
+            .parameter("m", "dimension", lambda v: range(max(1, self.dimension_lower_bound), self.dimension_upper_bound + 1))
+            .parameter("n", "dimension", lambda v: range(max(1, self.dimension_lower_bound), self.dimension_upper_bound + 1))
+            .parameter("i", "dimension", lambda v: range(max(1, self.dimension_lower_bound), self.dimension_upper_bound + 1))
+            .parameter("o", "dimension", lambda v: range(max(1, self.dimension_lower_bound), self.dimension_upper_bound + 1))
             .parameter("p", "dimension", lambda v: [v["i"] - v["m"]])
             .parameter("q", "dimension", lambda v: [v["o"] - v["n"]])
             .parameter("es3", "nat")
-            .parameter("es1", "nat", lambda v: range(0, v["es3"] + 1))
+            .parameter("es1", "nat", lambda v: range(1, v["es3"] + 1))
             .parameter("es2", "nat", lambda v: [v["es3"] - v["es1"]])
             .parameter("vs3", "nat")
             .parameter("vs1", "nat", lambda v: range(0, v["vs3"] + 1))
@@ -308,17 +311,17 @@ class DAGRepository:
                             Constructor("output", Var("o")) &
                             Constructor("edge_size", Var("es3")) &
                             Constructor("vertex_size", Var("vs3")))),
-            # TODO: improve counting of edges, therefore change the edge_size of a vertex and fix parameter computation in before
             "before": DSL()
-            .parameter("es3", "nat")  # before introduces n new edges, connecting two graphs horizontally
-            .parameter("n", "dimension", lambda v: range(self.dimension_lower_bound, v["es3"] + 1))
-            .parameter("es1", "nat", lambda v: range(0, v["es3"] - v["n"] + 1))
-            .parameter("es2", "nat", lambda v: [v["es3"] - v["n"] - v["es1"]])
+            .parameter("es3", "nat")
+            .parameter("m", "dimension", lambda v: range(self.dimension_lower_bound, min(v["es3"] - 1, self.dimension_upper_bound + 1)))
+            .parameter("p", "dimension", lambda v: range(self.dimension_lower_bound, min(v["es3"] - v["m"], self.dimension_upper_bound + 1)))
+            .parameter("n", "dimension",
+                       lambda v: range(max(1, self.dimension_lower_bound), v["es3"] - v["m"] - v["p"] + 1))  # n must be at least 1, otherwise its equal to beside?
+            .parameter("es1", "nat", lambda v: range(v["m"] + v["n"] - 1, v["es3"] - v["p"] + 1)) # m + n - 1 because of edge_size == 1 of edge-combinator, but sum of i and o is 2
+            .parameter("es2", "nat", lambda v: [v["es3"] - v["es1"] + v["n"]])
             .parameter("vs3", "nat")
             .parameter("vs1", "nat", lambda v: range(0, v["vs3"] + 1))
             .parameter("vs2", "nat", lambda v: [v["vs3"] - v["vs1"]])
-            .parameter("m", "dimension")
-            .parameter("p", "dimension")
             .argument("x", Constructor("graph",
                                        Constructor("input", Var("m")) &
                                        Constructor("output", Var("n")) &
@@ -374,10 +377,10 @@ class DAGRepository:
 
 if __name__ == "__main__":
 
-    repo = DAGRepository(9)
+    repo = DAGRepository(9, 0)
     target = Constructor("graph",
-                    Constructor("input", Literal(1, "dimension")) &
-                    Constructor("output", Literal(1, "dimension")) &
+                    Constructor("input", Literal(0, "dimension")) &
+                    Constructor("output", Literal(0, "dimension")) &
                     Constructor("edge_size", Literal(9, "nat")) &
                     Constructor("vertex_size", Literal(7, "nat")))
     synthesizer = SearchSpaceSynthesizer(repo.gamma(), repo.delta(), {})
