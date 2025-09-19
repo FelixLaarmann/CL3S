@@ -4,7 +4,7 @@ from cl3s import DSL, Constructor, Literal, Type, Var, SearchSpaceSynthesizer, D
 from collections.abc import Container
 
 
-class DAGRepository:
+class DAMGRepository:
     """
     A repository for directed acyclic graphs,
     following "An initial algebra approach to directed acyclic graphs" from Jeremy Gibbons.
@@ -377,7 +377,7 @@ class DAGRepository:
 
 if __name__ == "__main__":
 
-    repo = DAGRepository(9, 0)
+    repo = DAMGRepository(9, 0)
     target = Constructor("graph",
                     Constructor("input", Literal(0, "dimension")) &
                     Constructor("output", Literal(0, "dimension")) &
