@@ -10,13 +10,16 @@ from typing import Any, Generic, Optional, TypeVar, Union, Generator
 import typing
 from dataclasses import dataclass, field
 import random
+import networkx as nx
+import grakel
+from grakel.utils import graph_from_networkx
 
 NT = TypeVar("NT", bound=Hashable) # type of non-terminals
 T = TypeVar("T", bound=Hashable) # type of terminals
 G = TypeVar("G", bound=Hashable)  # type of constants/literal group names
 
 from cosy.tree import Tree
-from cosy.solution_space import RHSRule
+from cosy.solution_space import RHSRule, NonTerminalArgument
 
 if typing.TYPE_CHECKING:
     from .search_space import SearchSpace
@@ -57,35 +60,46 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
         self.frozen = frozen
 
 
-    def to_labeled_adjacency_dict(self, next_index: int = 0) -> tuple[dict[int, list[int]], dict[int, T], int]:
-        """
-        Convert the tree to a tuple of a dictionary, mapping node indices to their argument indices, a dictionary
-        mapping node indices to combinators, and the highest index from the mapping.
-        :param next_index: The next index to use for the root node.
-        :return: A tuple containing the edges dictionary, labels dictionary, and the next index.
-        """
-        edges: dict[int, list[int]] = {next_index: []}
-        labels: dict[int, T] = {next_index: self.root}
-        i = next_index + 1
-        for child in self.children:
-            edges[next_index].append(i)
-            labels[i] = child.root
-            child_edges, child_labels, n = child.to_labeled_adjacency_dict(i)
-            edges.update(child_edges)
-            labels.update(child_labels)
-            i = n
-        return edges, labels, i
+    def to_indexed_nx_digraph(self, start_index: int = 0) -> tuple[nx.DiGraph, dict[int, T]]:
+        if self.is_literal:
+            G = nx.DiGraph()
+            G.add_node(start_index, symbol=str(self.root), literal=True, type=self.literal_group)
+            return G, {start_index: self.root}
+        elif not self.children:
+            G = nx.DiGraph()
+            G.add_node(start_index, symbol=str(self.root), literal=False, type=self.derived_from)
+            return G, {start_index: self.root}
+        else:
+            G = nx.DiGraph()
+            G.add_node(start_index, symbol=str(self.root), literal=False, type=self.derived_from)
+            index_mapping = {start_index: self.root}
+            current_index = start_index + 1
+            for child in self.children:
+                Gc, child_mapping = child.to_indexed_nx_digraph(current_index)
+                G = nx.compose(G, Gc)
+                G.add_edge(start_index, current_index, argument_type=str(child.derived_from) if child.derived_from is not None else str(child.literal_group))
+                index_mapping.update(child_mapping)
+                current_index += len(child_mapping)
+            return G, index_mapping
 
-    def subtrees(self, path: list[int]) -> Generator[tuple["DerivationTree[NT, T, G]", list[int]], ...]:
+    def to_grakel_graph(self) -> grakel.Graph:
+        nx_graph, node_labels = self.to_indexed_nx_digraph()
+        gk_graph = graph_from_networkx([nx_graph.to_undirected()], node_labels_tag='symbol', edge_labels_tag='argument_type')
+        # I hate grakel! Why do they write tuple in their docs when it is actually a str?!
+        return gk_graph
+
+    def subtrees(self, path: list[int]) -> list[tuple["DerivationTree[NT, T, G]", list[int]]]:
         """
-        Compute all subtrees of the tree and their paths, including the tree itself.
+        Compute all subtrees of the tree and their paths including the tree itself.
         :param path: The path to the current tree.
         :return: A list of tuples, where each tuple contains a subtree and its path.
         """""
+        result = [(self, path)]
         for i, child in enumerate(self.children):
             # recursively compute the subtrees of the children
             for subtree, child_path in child.subtrees(path + [i]):
-                yield subtree, child_path
+                result.append((subtree, child_path))
+        return result
 
     def replace(self, path: list[int], subtree: "DerivationTree[NT, T, G]") -> "DerivationTree[NT, T, G]":
         """
@@ -117,10 +131,24 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
         current.children = tuple(current.children[:path[-1]] + (subtree,) + current.children[path[-1] + 1:])
         return new_tree
 
-    def is_valid_crossover(self, primary_path: list[int], secondary_tree: "DerivationTree[NT, T, G]",
+    def is_valid_crossover(self, primary_tree: "DerivationTree[NT, T, G]", secondary_tree: "DerivationTree[NT, T, G]",
                            search_space: "SearchSpace[NT, T, G]", max_depth: int | None = None) -> bool:
-        # TODO
-        raise NotImplementedError("This method still needs to be implemented.")
+        rule = primary_tree.rhs_rule
+        if rule == secondary_tree.rhs_rule:
+            # if the rules are the same, we can perform the crossover
+            return True
+        if len(rule.arguments) == len(secondary_tree.children):
+            substitution: dict[str, DerivationTree[NT, T, G]] = {}
+            for arg, child in zip(rule.arguments, secondary_tree.children):
+                if isinstance(arg, NonTerminalArgument):
+                    # if the argument is a non-terminal, check if the derived_from matches
+                    if child.derived_from != arg.origin:  # TODO: subtyping instead of equality?
+                        return False
+                    substitution[arg.name] = child
+            return all(predicate(substitution | secondary_tree.rhs_rule.literal_substitution)
+                       for predicate in rule.predicates)
+        else:
+            return False
 
     def is_consistent_with(self, search_space: SearchSpace[NT, T, G]) -> bool:
         return search_space.contains_tree(self.derived_from, self)
@@ -139,7 +167,9 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
         """
         # compute all subtrees and their paths, excluding the whole primary derivation tree (self)
         primary_subtrees = list(self.subtrees([]))
-        primary_subtrees.remove((self, []))
+        # TODO: this case should not occur
+        if (self, []) in primary_subtrees:
+            primary_subtrees.remove((self, []))
         # compute all subtrees of the secondary derivation tree, including the secondary derivation tree itself
         secondary_subtrees = list(secondary_derivation_tree.subtrees([]))
         # choose a random primary subtree as crossover point, until crossover is successful
@@ -177,7 +207,7 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
                 if selected_secondary.frozen:
                     continue
                 # test if the selected secondary subtree can be inserted into the crossover point of the primary subtree
-                valid = self.is_valid_crossover(primary_path, selected_secondary, search_space, max_depth)
+                valid = self.is_valid_crossover(selected_primary, selected_secondary, search_space, max_depth)
                 if valid:
                     # perform the crossover
                     offspring = self.replace(primary_path, selected_secondary)
