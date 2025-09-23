@@ -289,7 +289,7 @@ class NasBench101Repository:
             #.constraint(lambda v: v["x"].root != "edge" or v["y"].root != "edge")  # (neutrality of edge for before)
             .constraint(lambda v: self.before_constraints(v["x"], v["y"]))
             # TODO: this can be enforced within parameter abstraction, such that no constraint is necessary here
-            .constraint(lambda v: False if (v["vs1"] == 1 and v["vs2"] == 1 and v["n"] > 1) else True) # forbid multiple edges between two vertices to get from DAMGs to DAGs
+            .parameter_constraint(lambda v: False if (v["vs1"] == 1 and v["vs2"] == 1 and v["n"] > 1) else True) # forbid multiple edges between two vertices to get from DAMGs to DAGs
             .suffix(Constructor("graph",
                             Constructor("input", Var("m")) &
                             Constructor("output", Var("p")) &

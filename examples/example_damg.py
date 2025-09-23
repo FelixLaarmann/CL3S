@@ -100,6 +100,18 @@ class DAMGRepository:
     ->
     beside(copy(n+m, x), y)
 
+    beside(x, x)
+    ->
+    copy(2, x)
+
+    beside(copy(n, x), x)
+    ->
+    copy(n+1, x)
+
+    beside(x, copy(n, x))
+    ->
+    copy(n+1, x)
+
 
     From our FSCD-paper "Restricting tree grammars with term rewriting systems" we know,
     that it should be sufficient to define a term-predicate that forbids all left-hand sides of the rules,
@@ -125,8 +137,12 @@ class DAMGRepository:
         Checks for the left-hand sides of the term rewriting rules, that have beside as root, namely:
         - associativity of beside: beside(beside(x,y),z)
         - abiding law: beside(before(m,n,p, w(m,n), x(n,p)), before(m',r,p', y(m',r), z(r,p')))
+        - enforce copy: beside(x, x)
         - enforce copy: beside(x, beside(x,y))
         - enforce copy: beside(copy(n, x), beside(copy(m, x), y))
+        TODO:
+        - enforce copy: beside(x, copy(n, x))
+        - enforce copy: beside(copy(n, x), x)
         """
         left = fst_tree.root
         right = snd_tree.root
@@ -137,7 +153,9 @@ class DAMGRepository:
         if left == "before" and right == "before":
             return False
         # enforce copy
-        if right == "beside":
+        if fst_tree == snd_tree:  # beside(x, x)
+            return False
+        if right == "beside": # TODO: this seems buggy, since graphs with no vertices, mapping inputs directly to outputs aren't in normal form
             snd_tree_children = [t for t in snd_tree.children if not t.is_literal]
             right_left_tree = snd_tree_children[0] if len(snd_tree_children) > 0 else None
             if right_left_tree is None:
@@ -314,11 +332,11 @@ class DAMGRepository:
             "before": DSL()
             .parameter("es3", "nat")
             .parameter("m", "dimension", lambda v: range(self.dimension_lower_bound, min(v["es3"] - 1, self.dimension_upper_bound + 1)))
-            .parameter("p", "dimension", lambda v: range(self.dimension_lower_bound, min(v["es3"] - v["m"], self.dimension_upper_bound + 1)))
+            .parameter("p", "dimension", lambda v: range(self.dimension_lower_bound, min(v["es3"] - v["m"] + 1, self.dimension_upper_bound + 1)))
             .parameter("n", "dimension",
                        lambda v: range(max(1, self.dimension_lower_bound), v["es3"] - v["m"] - v["p"] + 1))  # n must be at least 1, otherwise its equal to beside?
             .parameter("es1", "nat", lambda v: range(v["m"] + v["n"] - 1, v["es3"] - v["p"] + 1)) # m + n - 1 because of edge_size == 1 of edge-combinator, but sum of i and o is 2
-            .parameter("es2", "nat", lambda v: [v["es3"] - v["es1"] + v["n"]])
+            .parameter("es2", "nat", lambda v: [v["es3"] - v["es1"] + v["n"]])  # TODO: edge size computations are still of, if a graph has edges-constructors in it, since they behave different then vertices!
             .parameter("vs3", "nat")
             .parameter("vs1", "nat", lambda v: range(0, v["vs3"] + 1))
             .parameter("vs2", "nat", lambda v: [v["vs3"] - v["vs1"]])
@@ -354,13 +372,13 @@ class DAMGRepository:
             .parameter("i", "dimension")
             .parameter("o", "dimension")
             .parameter("m", "dimension", # copy with m = 1 is just the identity, so we exclude that
-                       lambda v: [x for x in range(2, max(v["i"], v["o"])) if v["i"] % x == 0 and v["o"] % x == 0])  # m must be a common divisor of i and o
+                       lambda v: [x for x in range(2, max(v["i"], v["o"]) + 1) if v["i"] % x == 0 and v["o"] % x == 0])  # m must be a common divisor of i and o
             .parameter("p", "dimension", lambda v: [v["i"] // v["m"]])
             .parameter("q", "dimension", lambda v: [v["o"] // v["m"]])
             .parameter("es2", "nat")
-            .parameter("es1", "nat", lambda v: [x for x in range(1, v["es2"] + 1) if v["es2"] % v["m"] == 0])  # es1 must be a multiple of m
+            .parameter("es1", "nat", lambda v: [x for x in range(0, v["es2"] + 1) if x * v["m"] == v["es2"]])
             .parameter("vs2", "nat")
-            .parameter("vs1", "nat", lambda v: [x for x in range(1, v["vs2"] + 1) if v["vs2"] % v["m"] == 0])  # vs1 must be a multiple of m
+            .parameter("vs1", "nat", lambda v: [x for x in range(0, v["vs2"] + 1) if x * v["m"] == v["vs2"]])
             .argument("x", Constructor("graph",
                                   Constructor("input", Var("p")) &
                                   Constructor("output", Var("q")) &
@@ -379,13 +397,13 @@ if __name__ == "__main__":
 
     repo = DAMGRepository(9, 0)
     target = Constructor("graph",
-                    Constructor("input", Literal(0, "dimension")) &
-                    Constructor("output", Literal(0, "dimension")) &
-                    Constructor("edge_size", Literal(9, "nat")) &
-                    Constructor("vertex_size", Literal(7, "nat")))
+                    Constructor("input", Literal(4, "dimension")) &
+                    Constructor("output", Literal(4, "dimension")) &
+                    Constructor("edge_size", Literal(4, "nat")) &
+                    Constructor("vertex_size", Literal(0, "nat")))
     synthesizer = SearchSpaceSynthesizer(repo.gamma(), repo.delta(), {})
     search_space = synthesizer.construct_search_space(target).prune()
-    trees = search_space.enumerate_trees(target, 10)
+    trees = search_space.enumerate_trees(target, 100)
     #trees = search_space.sample(10, target)
     for t in trees:
         print(t)

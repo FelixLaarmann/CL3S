@@ -180,7 +180,7 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
                         for p in candidate.arguments
                     ]
             )
-            for _ in range(100):  # self.cost):
+            for _ in range(100):  # self.cost): # TODO: handle cost differently!
                 for arg in candidate.arguments:
                     if isinstance(arg, NonTerminalArgument):
                         child_depth = self._annotated_symbol_depths.get(arg.origin)
