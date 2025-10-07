@@ -1,4 +1,6 @@
-from typing import Iterable, Any
+from typing import Iterable, Any, Union
+
+from cosy.solution_space import RHSRule, ConstantArgument
 
 from cl3s import DSL, Constructor, Literal, Type, Var, SearchSpaceSynthesizer, DerivationTree
 from collections.abc import Container
@@ -137,10 +139,10 @@ class DAMGRepository:
         Checks for the left-hand sides of the term rewriting rules, that have beside as root, namely:
         - associativity of beside: beside(beside(x,y),z)
         - abiding law: beside(before(m,n,p, w(m,n), x(n,p)), before(m',r,p', y(m',r), z(r,p')))
+
         - enforce copy: beside(x, x)
         - enforce copy: beside(x, beside(x,y))
         - enforce copy: beside(copy(n, x), beside(copy(m, x), y))
-        TODO:
         - enforce copy: beside(x, copy(n, x))
         - enforce copy: beside(copy(n, x), x)
         """
@@ -155,7 +157,7 @@ class DAMGRepository:
         # enforce copy
         if fst_tree == snd_tree:  # beside(x, x)
             return False
-        if right == "beside": # TODO: this seems buggy, since graphs with no vertices, mapping inputs directly to outputs aren't in normal form
+        if right == "beside":  # beside(copy(n, x), beside(copy(m, x), y))
             snd_tree_children = [t for t in snd_tree.children if not t.is_literal]
             right_left_tree = snd_tree_children[0] if len(snd_tree_children) > 0 else None
             if right_left_tree is None:
@@ -170,6 +172,36 @@ class DAMGRepository:
                     raise ValueError("copy must have exactly one non-literal argument")
                 if fst_tree_children[0] == right_left_children[0]:
                     return False
+        if right == "copy": # beside(x, copy(n, x))
+            right_children = [t for t in snd_tree.children if not t.is_literal]
+            if len(right_children) != 1:
+                raise ValueError("copy must have exactly one non-literal argument")
+            right_child = right_children[0]
+            if fst_tree == right_child:
+                return False
+        if left == "copy": # beside(copy(n, x), x)
+            left_children = [t for t in fst_tree.children if not t.is_literal]
+            if len(left_children) != 1:
+                raise ValueError("copy must have exactly one non-literal argument")
+            left_child = left_children[0]
+            if snd_tree == left_child:
+                return False
+        return True
+
+    def lifted_beside_constraints(self, fst_tree: Union[DerivationTree[Any, str, Any], RHSRule[Any, str, Any]], snd_tree: Union[DerivationTree[Any, str, Any], RHSRule[Any, str, Any]]) -> bool:
+        if isinstance(fst_tree, DerivationTree) and isinstance(snd_tree, DerivationTree):
+            return self.beside_constraints(fst_tree, snd_tree)
+        if not (isinstance(fst_tree, RHSRule) and isinstance(snd_tree, RHSRule)):
+            raise ValueError("Both arguments must be of the same type, either DerivationTree or RHSRule")
+        left = fst_tree.terminal
+        right = snd_tree.terminal
+        # enforce right associativity of beside
+        if left == "beside":
+            return False
+        # abiding law
+        if left == "before" and right == "before":
+            return False
+        # enforce copy rules are not liftable! :(
         return True
 
     def before_constraints(self, fst_tree: DerivationTree[Any, str, Any], snd_tree: DerivationTree[Any, str, Any]) -> bool:
@@ -270,6 +302,34 @@ class DAMGRepository:
                         return False
         return True
 
+    def lifted_before_constraints(self, fst_tree: Union[DerivationTree[Any, str, Any], RHSRule[Any, str, Any]], snd_tree: Union[DerivationTree[Any, str, Any], RHSRule[Any, str, Any]]) -> bool:
+        if isinstance(fst_tree, DerivationTree) and isinstance(snd_tree, DerivationTree):
+            return self.before_constraints(fst_tree, snd_tree)
+        if not (isinstance(fst_tree, RHSRule) and isinstance(snd_tree, RHSRule)):
+            raise ValueError("Both arguments must be of the same type, either DerivationTree or RHSRule")
+
+        left = fst_tree.terminal
+        right = snd_tree.terminal
+
+        # enforce right associativity of before
+        if left == "before":
+            return False
+
+        # neutrality of edge for before
+        if left == "edge" or right == "edge":
+            return False
+
+        # simplified swap law
+        if left == "swap" and right == "swap":
+            lit_args_fst = [arg.value for arg in fst_tree.arguments if isinstance(arg, ConstantArgument)]
+            lit_args_snd = [arg.value for arg in snd_tree.arguments if isinstance(arg, ConstantArgument)]
+            if len(lit_args_fst) != 4 or len(lit_args_snd) != 4:
+                raise ValueError("swap must have exactly four (literal) arguments")
+            if lit_args_fst[1] == lit_args_snd[2] and lit_args_fst[2] == lit_args_snd[1]:
+                return False
+
+        return True
+
     # Our Delta will contain Booleans as the two elementary set and natural numbers as an infinite set (good for indexing).
     def base_delta(self) -> dict[str, list[Any]]:
         return {"nat": self.Nat(),
@@ -323,7 +383,7 @@ class DAMGRepository:
                                   Constructor("edge_size", Var("es2")) &
                                   Constructor("vertex_size", Var("vs2"))))
             #.constraint(lambda v: v["x"].root != "before" and v["y"].root != "before")  # (abiding law)
-            .constraint(lambda v: self.beside_constraints(v["x"], v["y"]))
+            .constraint(lambda v: self.lifted_beside_constraints(v["x"], v["y"]))
             .suffix(Constructor("graph",
                             Constructor("input", Var("i")) &
                             Constructor("output", Var("o")) &
@@ -336,7 +396,7 @@ class DAMGRepository:
             .parameter("n", "dimension",
                        lambda v: range(max(1, self.dimension_lower_bound), v["es3"] - v["m"] - v["p"] + 1))  # n must be at least 1, otherwise its equal to beside?
             .parameter("es1", "nat", lambda v: range(v["m"] + v["n"] - 1, v["es3"] - v["p"] + 1)) # m + n - 1 because of edge_size == 1 of edge-combinator, but sum of i and o is 2
-            .parameter("es2", "nat", lambda v: [v["es3"] - v["es1"] + v["n"]])  # TODO: edge size computations are still of, if a graph has edges-constructors in it, since they behave different then vertices!
+            .parameter("es2", "nat", lambda v: [v["es3"] - v["es1"] + v["n"]])  # TODO: edge size computations is still of, e.g. graph with i & o = 0, v = 2 and e = 3 should have solutions with swap!
             .parameter("vs3", "nat")
             .parameter("vs1", "nat", lambda v: range(0, v["vs3"] + 1))
             .parameter("vs2", "nat", lambda v: [v["vs3"] - v["vs1"]])
@@ -352,7 +412,7 @@ class DAMGRepository:
                                        Constructor("edge_size", Var("es2")) &
                                        Constructor("vertex_size", Var("vs2"))))
             #.constraint(lambda v: v["x"].root != "edge" or v["y"].root != "edge")  # (neutrality of edge for before)
-            .constraint(lambda v: self.before_constraints(v["x"], v["y"]))
+            .constraint(lambda v: self.lifted_before_constraints(v["x"], v["y"]))
             .suffix(Constructor("graph",
                             Constructor("input", Var("m")) &
                             Constructor("output", Var("p")) &
@@ -397,13 +457,13 @@ if __name__ == "__main__":
 
     repo = DAMGRepository(9, 0)
     target = Constructor("graph",
-                    Constructor("input", Literal(4, "dimension")) &
-                    Constructor("output", Literal(4, "dimension")) &
-                    Constructor("edge_size", Literal(4, "nat")) &
-                    Constructor("vertex_size", Literal(0, "nat")))
+                    Constructor("input", Literal(3, "dimension")) &
+                    Constructor("output", Literal(3, "dimension")) &
+                    Constructor("edge_size", Literal(5, "nat")) &
+                    Constructor("vertex_size", Literal(2, "nat")))
     synthesizer = SearchSpaceSynthesizer(repo.gamma(), repo.delta(), {})
     search_space = synthesizer.construct_search_space(target).prune()
     trees = search_space.enumerate_trees(target, 100)
-    #trees = search_space.sample(10, target)
+    #trees = search_space.sample(3, target)
     for t in trees:
         print(t)

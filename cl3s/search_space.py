@@ -208,7 +208,7 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
                     )
             return None
 
-    def sample_random_term(self, nt: NT, cs: int) -> DerivationTree[NT, T, G] | None:
+    def sample_random_term(self, nt: NT, cs: int, lift = False) -> DerivationTree[NT, T, G] | None:
         applicable: list[tuple[RHSRule[NT, T, G], int]] = []
         #for (lhs, rhs), n in self.rules:
         #    new_cs = cs + n
@@ -227,7 +227,7 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
                 return tree
         return None
 
-    def sample(self, size: int, non_terminal: NT, max_depth: int | None = None) -> set[DerivationTree[NT, T, G]]:
+    def sample(self, size: int, non_terminal: NT, max_depth: int | None = None, lift = False) -> set[DerivationTree[NT, T, G]]:
         """
         Sample a list of length size of random trees from the search space.
         """
@@ -245,9 +245,9 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
             # this only works for big search spaces and small sample sizes.
             # If the sample size is near the size of the search space, this might loop for a long time
             cs = 0
-            term: DerivationTree[NT, T, G] | None = self.sample_random_term(non_terminal, cs)
+            term: DerivationTree[NT, T, G] | None = self.sample_random_term(non_terminal, cs, lift)
             while term is None:
-                term = self.sample_random_term(non_terminal, cs)
+                term = self.sample_random_term(non_terminal, cs, lift)
             sample.add(term)
             # if len(sample) >= size:
             #    break
