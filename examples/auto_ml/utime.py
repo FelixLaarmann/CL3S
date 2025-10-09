@@ -35,6 +35,19 @@ class UtimeRepository:
         def __contains__(self, value: object) -> bool:
             return value is None or (isinstance(value, list) and all(isinstance(v, int) and v >= 0 for v in value))
 
+    convs = ["simple_convolution", "depthwise_separable_convolution", None]
+
+    afs = ["ReLu", "ELU", None]
+
+    class Maybe_Conv_list(Container):
+        def __contains__(self, value: object) -> bool:
+            return value is None or (isinstance(value, list) and all(v in UtimeRepository.convs for v in value))
+
+    class Maybe_AF_list(Container):
+        def __contains__(self, value: object) -> bool:
+            return value is None or (isinstance(value, list) and all(v in UtimeRepository.afs for v in value))
+
+
 
     def parameters(self) -> dict[str, list[Any]]:
         return {
@@ -46,10 +59,12 @@ class UtimeRepository:
             "maxpool_size": self.maxpool_size_choices,
             #"conv_block_length": self.conv_block_length_choices,
             # Some labels to utilize in the specification
-            "activation_function": ["ReLu", "ELU", None],
-            "convolution": ["simple_convolution", "depthwise_separable_convolution", None],
+            "activation_function": self.afs,
+            "convolution": self.convs,
             "length": self.Nat(), # self.Maybe_Nat(),
             "size_list": self.Maybe_Nat_List(),
+            "convolution_list": self.Maybe_Conv_list(),
+            "activation_function_list": self.Maybe_AF_list(),
         }
 
     def specification(self):
@@ -70,12 +85,13 @@ class UtimeRepository:
             "ChannelWiseNorm": DSL()
             .parameter("n", "dimension")
             .parameter("e", "normalization_eps")
-            .constraint(lambda v: v["e"] is not None)
+            .parameter_constraint(lambda v: v["e"] is not None)
             .suffix(Constructor("normalization",
                                 Constructor("output", Var("n")))
                     & Constructor("channel_wise_norm",
-                                  Constructor("normalization_epsilon", Var("e"))
-                                  & Constructor("normalization_epsilon", Literal(None, "normalization_eps")))
+                                  Constructor("normalization_epsilon", Var("e"))) &
+                    Constructor("channel_wise_norm",
+                                Constructor("normalization_epsilon", Literal(None, "normalization_eps")))
                     ),
 
             "Conv1dLayerNorm": DSL()
@@ -87,10 +103,11 @@ class UtimeRepository:
 
             "Dropout1d": DSL()
             .parameter("d", "dropout_p")
-            .constraint(lambda v: v["d"] is not None)
+            .parameter_constraint(lambda v: v["d"] is not None)
             .suffix(Constructor("dropout",
-                                Constructor("probability", Var("d"))
-                                & Constructor("probability", Literal(None, "dropout_p")))
+                                Constructor("probability", Var("d")))
+                    & Constructor("dropout",
+                                  Constructor("probability", Literal(None, "dropout_p")))
                     ),
 
             "Maxpool1d": DSL()
@@ -482,6 +499,8 @@ class UtimeRepository:
             .parameter("c", "convolution")
             .parameter("e", "normalization_eps")
             .parameter("m", "maxpool_size")
+            .parameter("cs", "convolution_list", lambda v: [v["c"]])
+            .parameter("afs", "activation_function_list", lambda v: [v["af"]])
             .suffix(
                 (
                         (
@@ -533,6 +552,10 @@ class UtimeRepository:
                                                 #& Constructor("output", Var("in"))
                                                 & Constructor("length", Literal(0, "length"))
                                                 & Constructor("length", Literal(None, "length"))
+                                                & Constructor("conv_list", Literal(None, "convolution_list"))
+                                                & Constructor("conv_list", Var("cs"))
+                                                & Constructor("af_list", Literal(None, "activation_function_list"))
+                                                & Constructor("af_list", Var("afs")) # TODO improve this
                                                 )
                                     & Constructor("convolution", Var("c"))
                                     & Constructor("activation", Var("af"))
