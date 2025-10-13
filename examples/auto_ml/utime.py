@@ -898,7 +898,7 @@ if __name__ == "__main__":
 
     target2 = (
             Constructor("u_model",
-                        Constructor("dimensions", Literal((256, 128, 128), "dimension_list")) # TODO: make dimension None-able!
+                        Constructor("dimensions", Literal((256, 128, 128), "dimension_list"))
                         & Constructor("kernel_sizes", Literal((2, 3, 5), "kernel_size_list"))
                         & Constructor("maxpool_sizes", Literal((5, 5, 3), "maxpool_size_list"))
                         )
@@ -914,7 +914,26 @@ if __name__ == "__main__":
                           )
               )
 
-    target = target2
+    target3 = (
+            Constructor("u_model",
+                        Constructor("dimensions",
+                                    Literal((256, 128, 128), "dimension_list"))  # TODO: make dimension None-able!
+                        & Constructor("kernel_sizes", Literal((2, None, 5), "kernel_size_list"))
+                        & Constructor("maxpool_sizes", Literal((None, 5, None), "maxpool_size_list"))
+                        )
+            & Constructor("bottleneck",
+                          Constructor("in_and_out", Literal(64, "dimension"))
+                          & Constructor("kernel_size", Literal(1, "kernel_size")))
+            & Constructor("homogeneous",
+                          Constructor("convolution", Literal("simple_convolution", "convolution"))
+                          & Constructor("activation", Literal(None, "activation_function"))
+                          & Constructor("dropout_p", Literal(0.1, "dropout_p"))
+                          & Constructor("normalization", Literal("channel_wise_norm", "normalization"))
+                          & Constructor("normalization_epsilon", Literal(1e-3, "normalization_eps"))
+                          )
+    )
+
+    target = target3
 
     print(repo.parameters())
 
