@@ -89,12 +89,14 @@ class UtimeRepository:
         # Parameters that are optional in request language need to have None as a choice
         self.normalization_eps_choices.append(None)
         self.dropout_p_choices.append(None)
+        self.kernel_size_choices.append(None)
+        self.maxpool_size_choices.append(None)
 
-    convs = ["simple_convolution", "depthwise_separable_convolution", None]
+        self.convs = ["simple_convolution", "depthwise_separable_convolution", None]
 
-    afs = ["ReLu", "ELU", "Tanh", None]
+        self.afs = ["ReLu", "ELU", "Tanh", None]
 
-    norms = ["batch_norm", "conv1d_layer_norm", "channel_wise_norm", None]
+        self.norms = ["batch_norm", "conv1d_layer_norm", "channel_wise_norm", None]
 
     class Maybe_Nat(Container):
         def __contains__(self, value: object) -> bool:
@@ -104,50 +106,66 @@ class UtimeRepository:
         def __contains__(self, value: object) -> bool:
             return isinstance(value, int) and value >= 0
 
-    class Maybe_Nat_List(Container):
+    class Maybe_Nat_Tuple(Container):
         def __contains__(self, value: object) -> bool:
-            return value is None or (isinstance(value, list) and all(isinstance(v, int) and v >= 0 for v in value))
+            return isinstance(value, tuple) and all(True if v is None else isinstance(v, int) and v >= 0 for v in value)
 
-    # TODO: refactor inner class to match the factory pattern of Maybe_dropout_list
-    class Maybe_Conv_list(Container):
+    class Maybe_Conv_Tuple(Container):
+        def __init__(self, conv_choices):
+            self.conv_choices = conv_choices
+
         def __contains__(self, value: object) -> bool:
-            return value is None or (isinstance(value, list) and all(v in UtimeRepository.convs for v in value))
+            return isinstance(value, tuple) and all(True if v is None else v in self.conv_choices for v in value)
 
-    class Maybe_Conv_list_list(Container):
+    class Maybe_Conv_Tuple_Tuple(Container):
+        def __init__(self, conv_choices):
+            self.conv_choices = conv_choices
+
         def __contains__(self, value: object) -> bool:
-            return value is None or (isinstance(value, list) and all(isinstance(v, list) and all(c in UtimeRepository.convs for c in v) for v in value))
+            return (isinstance(value, tuple) and
+                    all(isinstance(v, tuple) and
+                        all(True if c is None else c in self.conv_choices for c in v) for v in value))
 
-    class Maybe_AF_list(Container):
+    class Maybe_AF_Tuple(Container):
+        def __init__(self, af_choices):
+            self.af_choices = af_choices
+
         def __contains__(self, value: object) -> bool:
-            return value is None or (isinstance(value, list) and all(v in UtimeRepository.afs for v in value))
+            return isinstance(value, tuple) and all(True if v is None else v in self.af_choices for v in value)
 
-    class Maybe_Norm_list(Container):
+    class Maybe_Norm_Tuple(Container):
+        def __init__(self, norm_choices):
+            self.norm_choices = norm_choices
+
         def __contains__(self, value: object) -> bool:
-            return value is None or (isinstance(value, list) and all(v in UtimeRepository.norms for v in value))
+            return isinstance(value, tuple) and all(True if v is None else v in self.norm_choices for v in value)
 
-    class Maybe_dropout_list(Container):
+    class Maybe_Dropout_Tuple(Container):
         def __init__(self, dropout_p_choices):
             self.dropout_p_choices = dropout_p_choices
         def __contains__(self, value: object) -> bool:
-            return value is None or (isinstance(value, list) and all(v in self.dropout_p_choices for v in value))
+            return isinstance(value, tuple) and all(True if v is None else v in self.dropout_p_choices for v in value)
 
-    class Maybe_kernel_size_list(Container):
+    class Maybe_Kernel_Size_Tuple(Container):
         def __init__(self, kernel_size_choices):
             self.kernel_size_choices = kernel_size_choices
-        def __contains__(self, value: object) -> bool:
-            return value is None or (isinstance(value, list) and all(v in self.kernel_size_choices for v in value))
 
-    class Maybe_maxpool_size_list(Container):
+        def __contains__(self, value: object) -> bool:
+            return isinstance(value, tuple) and all(True if v is None else v in self.kernel_size_choices for v in value)
+
+    class Maybe_Maxpool_Size_Tuple(Container):
         def __init__(self, maxpool_size_choices):
             self.maxpool_size_choices = maxpool_size_choices
-        def __contains__(self, value: object) -> bool:
-            return value is None or (isinstance(value, list) and all(v in self.maxpool_size_choices for v in value))
 
-    class Maybe_dimension_list(Container):
+        def __contains__(self, value: object) -> bool:
+            return isinstance(value, tuple) and all(True if v is None else v in self.maxpool_size_choices for v in value)
+
+    class Maybe_Dimension_Tuple(Container):
         def __init__(self, dimension_choices):
             self.dimension_choices = dimension_choices
+
         def __contains__(self, value: object) -> bool:
-            return value is None or (isinstance(value, list) and all(v in self.dimension_choices for v in value))
+            return (isinstance(value, tuple) and all(True if v is None else v in self.dimension_choices for v in value))
 
     def parameters(self) -> dict[str, list[Any]]:
         return {
@@ -163,14 +181,14 @@ class UtimeRepository:
             "convolution": self.convs,
             "normalization": self.norms,
             "length": self.Nat(), # self.Maybe_Nat(),
-            "size_list": self.Maybe_Nat_List(),
-            "convolution_list": self.Maybe_Conv_list(),
-            "activation_function_list": self.Maybe_AF_list(),
-            "normalization_list": self.Maybe_Norm_list(),
-            "dropout_list": self.Maybe_dropout_list(self.dropout_p_choices),
-            "kernel_size_list": self.Maybe_kernel_size_list(self.kernel_size_choices),
-            "maxpool_size_list": self.Maybe_maxpool_size_list(self.maxpool_size_choices),
-            "dimension_list": self.Maybe_dimension_list(self.dimension_choices),
+            "size_list": self.Maybe_Nat_Tuple(),
+            "convolution_list": self.Maybe_Conv_Tuple(self.convs),
+            "activation_function_list": self.Maybe_AF_Tuple(self.afs),
+            "normalization_list": self.Maybe_Norm_Tuple(self.norms),
+            "dropout_list": self.Maybe_Dropout_Tuple(self.dropout_p_choices),
+            "kernel_size_list": self.Maybe_Kernel_Size_Tuple(self.kernel_size_choices),
+            "maxpool_size_list": self.Maybe_Maxpool_Size_Tuple(self.maxpool_size_choices),
+            "dimension_list": self.Maybe_Dimension_Tuple(self.dimension_choices),
         }
 
     def specification(self):
@@ -288,9 +306,11 @@ class UtimeRepository:
                         )
                         ** (
                                 Constructor("conv_block",
-                                        Constructor("input", Var("in"))
-                                        & Constructor("output", Var("out"))
-                                        & Constructor("kernel_size", Var("k")))
+                                            Constructor("input", Var("in"))
+                                            & Constructor("output", Var("out"))
+                                            & Constructor("kernel_size", Var("k"))
+                                            #& Constructor("kernel_size", Literal(None, "kernel_size"))
+                                            )
                                 & Constructor("homogeneous",
                                               Constructor("convolution", Var("c"))
                                               & Constructor("activation", Var("af"))
@@ -327,7 +347,9 @@ class UtimeRepository:
                                 Constructor("conv_block",
                                             Constructor("input", Var("in"))
                                             & Constructor("output", Var("out"))
-                                            & Constructor("kernel_size", Var("k")))
+                                            & Constructor("kernel_size", Var("k"))
+                                            #& Constructor("kernel_size", Literal(None, "kernel_size"))
+                                            )
                                 & Constructor("homogeneous",
                                               Constructor("convolution", Var("c"))
                                               & Constructor("activation", Var("af"))
@@ -366,7 +388,9 @@ class UtimeRepository:
                                 Constructor("conv_block",
                                             Constructor("input", Var("in"))
                                             & Constructor("output", Var("out"))
-                                            & Constructor("kernel_size", Var("k")))
+                                            & Constructor("kernel_size", Var("k"))
+                                            #& Constructor("kernel_size", Literal(None, "kernel_size"))
+                                            )
                                 & Constructor("homogeneous",
                                               Constructor("convolution", Var("c"))
                                               & Constructor("activation", Var("af"))
@@ -401,16 +425,20 @@ class UtimeRepository:
                                     & Constructor("normalization", Var("n"))
                                     & Constructor("normalization_epsilon", Var("e"))))
             .suffix(Constructor("encoder",
-                                            Constructor("input", Var("in"))
-                                            & Constructor("output", Var("out"))
-                                            & Constructor("kernel_size", Var("k")))
+                                Constructor("input", Var("in"))
+                                & Constructor("output", Var("out"))
+                                & Constructor("kernel_size", Var("k"))
+                                & Constructor("kernel_size", Literal(None, "kernel_size"))
+                                & Constructor("maxpool_size", Var("m"))
+                                & Constructor("maxpool_size", Literal(None, "maxpool_size"))
+                                )
                     & Constructor("homogeneous",
                                   Constructor("convolution", Var("c"))
                                   & Constructor("activation", Var("af"))
                                   & Constructor("dropout_p", Var("d"))
                                   & Constructor("normalization", Var("n"))
-                                  & Constructor("normalization_epsilon", Var("e"))
-                                  & Constructor("maxpool_size", Var("m")))),
+                                  & Constructor("normalization_epsilon", Var("e")))
+                    ),
 
             "Decoder": DSL()
             .parameter("in", "dimension")
@@ -436,14 +464,19 @@ class UtimeRepository:
             .suffix(Constructor("decoder",
                                 Constructor("input", Var("in"))
                                 & Constructor("output", Var("out"))
-                                & Constructor("kernel_size", Var("k")))
+                                & Constructor("kernel_size", Var("k"))
+                                & Constructor("kernel_size", Literal(None, "kernel_size"))
+                                & Constructor("upsample_size", Var("sf"))
+                                & Constructor("upsample_size", Literal(None, "maxpool_size"))
+                                )
                     & Constructor("homogeneous",
                                   Constructor("convolution", Var("c"))
                                   & Constructor("activation", Var("af"))
                                   & Constructor("dropout_p", Var("d"))
                                   & Constructor("normalization", Var("n"))
                                   & Constructor("normalization_epsilon", Var("e"))
-                                  & Constructor("upsample_size", Var("sf")))),
+                                  )
+                    ),
 
             "Linear": DSL()
             .parameter("in", "dimension")
@@ -470,25 +503,32 @@ class UtimeRepository:
             .argument("enc", Constructor("encoder",
                                             Constructor("input", Var("in"))
                                             & Constructor("output", Var("out_enc"))
-                                            & Constructor("kernel_size", Var("k1")))
+                                            & Constructor("kernel_size", Var("k1"))
+                                            & Constructor("maxpool_size", Var("m"))
+                                         )
                     & Constructor("homogeneous",
                                   Constructor("convolution", Var("c"))
                                   & Constructor("activation", Var("af"))
                                   & Constructor("dropout_p", Var("d"))
                                   & Constructor("normalization", Var("n"))
                                   & Constructor("normalization_epsilon", Var("e"))
-                                  & Constructor("maxpool_size", Var("m"))))
-            .argument("dec", Constructor("decoder",
+                                  )
+                      )
+            .argument("dec",
+                      Constructor("decoder",
                                 Constructor("input", Var("in_dec"))
                                 & Constructor("output", Var("in"))
-                                & Constructor("kernel_size", Var("k1")))
+                                & Constructor("kernel_size", Var("k1"))
+                                & Constructor("upsample_size", Var("m"))
+                                )
                     & Constructor("homogeneous",
                                   Constructor("convolution", Var("c"))
                                   & Constructor("activation", Var("af"))
                                   & Constructor("dropout_p", Var("d"))
                                   & Constructor("normalization", Var("n"))
                                   & Constructor("normalization_epsilon", Var("e"))
-                                  & Constructor("upsample_size", Var("m"))))
+                                  )
+                      )
             .argument("cb", Constructor("conv_block",
                                         Constructor("input", Var("out_enc"))
                                         & Constructor("output", Var("out_enc"))
@@ -532,25 +572,31 @@ class UtimeRepository:
             .argument("enc", Constructor("encoder",
                                          Constructor("input", Var("in_enc"))
                                          & Constructor("output", Var("in_u"))
-                                         & Constructor("kernel_size", Var("k")))
+                                         & Constructor("kernel_size", Var("k"))
+                                         & Constructor("maxpool_size", Var("m"))
+                                         )
                       & Constructor("homogeneous",
                                     Constructor("convolution", Var("c"))
                                     & Constructor("activation", Var("af"))
                                     & Constructor("dropout_p", Var("d"))
                                     & Constructor("normalization", Var("n"))
                                     & Constructor("normalization_epsilon", Var("e"))
-                                    & Constructor("maxpool_size", Var("m"))))
+                                    )
+                      )
             .argument("dec", Constructor("decoder",
                                          Constructor("input", Var("in_dec"))
                                          & Constructor("output", Var("in_enc"))
-                                         & Constructor("kernel_size", Var("k")))
+                                         & Constructor("kernel_size", Var("k"))
+                                         & Constructor("upsample_size", Var("m"))
+                                         )
                       & Constructor("homogeneous",
                                     Constructor("convolution", Var("c"))
                                     & Constructor("activation", Var("af"))
                                     & Constructor("dropout_p", Var("d"))
                                     & Constructor("normalization", Var("n"))
                                     & Constructor("normalization_epsilon", Var("e"))
-                                    & Constructor("upsample_size", Var("m"))))
+                                    )
+                      )
             .argument("u_model", Constructor("u_model",
                                                 Constructor("in_and_out", Var("in_u"))
                                                 & Constructor("length", Var("l_u"))
@@ -577,6 +623,161 @@ class UtimeRepository:
                                   & Constructor("dropout_p", Var("d"))
                                   & Constructor("normalization", Var("n"))
                                   & Constructor("normalization_epsilon", Var("e")))),
+
+
+
+            "UModel_dkm_list": DSL()
+            .parameter("in", "dimension")
+            .parameter("out_enc", "dimension")
+            .parameter("in_dec", "dimension", lambda v: [2 * v["out_enc"]])
+            .parameter("k1", "kernel_size")
+            .parameter("k2", "kernel_size")
+            .parameter("d", "dropout_p")
+            .parameter("af", "activation_function")
+            .parameter("c", "convolution")
+            .parameter("e", "normalization_eps")
+            .parameter("n", "normalization")
+            .parameter("m", "maxpool_size")
+            .parameter("ds", "dimension_list", lambda v: [(v["in"],)])
+            .parameter("ks", "kernel_size_list", lambda v: [(v["k1"],)])
+            .parameter("ms", "maxpool_size_list", lambda v: [(v["m"],)])
+            .argument("enc", Constructor("encoder",
+                                         Constructor("input", Var("in"))
+                                         & Constructor("output", Var("out_enc"))
+                                         & Constructor("kernel_size", Var("k1"))
+                                         & Constructor("maxpool_size", Var("m"))
+                                         )
+                      & Constructor("homogeneous",
+                                    Constructor("convolution", Var("c"))
+                                    & Constructor("activation", Var("af"))
+                                    & Constructor("dropout_p", Var("d"))
+                                    & Constructor("normalization", Var("n"))
+                                    & Constructor("normalization_epsilon", Var("e"))
+                                    )
+                      )
+            .argument("dec", Constructor("decoder",
+                                         Constructor("input", Var("in_dec"))
+                                         & Constructor("output", Var("in"))
+                                         & Constructor("kernel_size", Var("k1"))
+                                         & Constructor("upsample_size", Var("m"))
+                                         )
+                      & Constructor("homogeneous",
+                                    Constructor("convolution", Var("c"))
+                                    & Constructor("activation", Var("af"))
+                                    & Constructor("dropout_p", Var("d"))
+                                    & Constructor("normalization", Var("n"))
+                                    & Constructor("normalization_epsilon", Var("e"))
+                                    )
+                      )
+            .argument("cb", Constructor("conv_block",
+                                        Constructor("input", Var("out_enc"))
+                                        & Constructor("output", Var("out_enc"))
+                                        & Constructor("kernel_size", Var("k2")))
+                      & Constructor("homogeneous",
+                                    Constructor("convolution", Var("c"))
+                                    & Constructor("activation", Var("af"))
+                                    & Constructor("dropout_p", Var("d"))
+                                    & Constructor("normalization", Var("n"))
+                                    & Constructor("normalization_epsilon", Var("e"))))
+            .suffix(Constructor("u_model",
+                                Constructor("dimensions", Var("ds"))
+                                & Constructor("kernel_sizes", Var("ks"))
+                                & Constructor("maxpool_sizes", Var("ms"))
+                                )
+                    & Constructor("bottleneck",
+                                  Constructor("in_and_out", Var("out_enc"))
+                                  & Constructor("kernel_size", Var("k2")))
+                    & Constructor("homogeneous",
+                                  Constructor("convolution", Var("c"))
+                                  & Constructor("activation", Var("af"))
+                                  & Constructor("dropout_p", Var("d"))
+                                  & Constructor("normalization", Var("n"))
+                                  & Constructor("normalization_epsilon", Var("e")))
+                    ),
+
+            "UModel_Cons_dkm_list": DSL()
+            .parameter("in_u", "dimension")  # in_u == out_enc
+            .parameter("in_enc", "dimension")
+            .parameter("in_dec", "dimension", lambda v: [2 * v["in_u"]])
+            .parameter("bd", "dimension")
+            .parameter("k", "kernel_size")
+            .parameter("bk", "kernel_size")
+            .parameter("d", "dropout_p")
+            .parameter("af", "activation_function")
+            .parameter("c", "convolution")
+            .parameter("e", "normalization_eps")
+            .parameter("n", "normalization")
+            .parameter("m", "maxpool_size")
+            .parameter("dds", "dimension_list")
+            .parameter_constraint(lambda v: len(v["dds"]) > 1 and v["dds"][0] == v["in_enc"])
+            .parameter("ds", "dimension_list", lambda v: [v["dds"][1:]])
+            .parameter_constraint(lambda v: len(v["ds"]) > 0 and v["ds"][0] == v["in_u"])
+            .parameter("kks", "kernel_size_list")
+            .parameter_constraint(lambda v: len(v["kks"]) > 1 and v["kks"][0] == v["k"])
+            .parameter("ks", "kernel_size_list", lambda v: [v["kks"][1:]])
+            .parameter_constraint(lambda v: len(v["ks"]) > 0)
+            .parameter("mms", "maxpool_size_list")
+            .parameter_constraint(lambda v: len(v["mms"]) > 1 and v["mms"][0] == v["m"])
+            .parameter("ms", "maxpool_size_list", lambda v: [v["mms"][1:]])
+            .parameter_constraint(lambda v: len(v["ms"]) > 0 )
+            .argument("enc", Constructor("encoder",
+                                         Constructor("input", Var("in_enc"))
+                                         & Constructor("output", Var("in_u"))
+                                         & Constructor("kernel_size", Var("k"))
+                                         & Constructor("maxpool_size", Var("m"))
+                                         )
+                      & Constructor("homogeneous",
+                                    Constructor("convolution", Var("c"))
+                                    & Constructor("activation", Var("af"))
+                                    & Constructor("dropout_p", Var("d"))
+                                    & Constructor("normalization", Var("n"))
+                                    & Constructor("normalization_epsilon", Var("e"))
+                                    )
+                      )
+            .argument("dec", Constructor("decoder",
+                                         Constructor("input", Var("in_dec"))
+                                         & Constructor("output", Var("in_enc"))
+                                         & Constructor("kernel_size", Var("k"))
+                                         & Constructor("upsample_size", Var("m"))
+                                         )
+                      & Constructor("homogeneous",
+                                    Constructor("convolution", Var("c"))
+                                    & Constructor("activation", Var("af"))
+                                    & Constructor("dropout_p", Var("d"))
+                                    & Constructor("normalization", Var("n"))
+                                    & Constructor("normalization_epsilon", Var("e"))
+                                    )
+                      )
+            .argument("u_model", Constructor("u_model",
+                                             Constructor("dimensions", Var("ds"))
+                                             & Constructor("kernel_sizes", Var("ks"))
+                                             & Constructor("maxpool_sizes", Var("ms"))
+                                             )
+                      & Constructor("bottleneck",
+                                    Constructor("in_and_out", Var("bd"))
+                                    & Constructor("kernel_size", Var("bk")))
+                      & Constructor("homogeneous",
+                                    Constructor("convolution", Var("c"))
+                                    & Constructor("activation", Var("af"))
+                                    & Constructor("dropout_p", Var("d"))
+                                    & Constructor("normalization", Var("n"))
+                                    & Constructor("normalization_epsilon", Var("e"))))
+            .suffix(Constructor("u_model",
+                                Constructor("dimensions", Var("dds"))
+                                & Constructor("kernel_sizes", Var("kks"))
+                                & Constructor("maxpool_sizes", Var("mms"))
+                                )
+                    & Constructor("bottleneck",
+                                  Constructor("in_and_out", Var("bd"))
+                                  & Constructor("kernel_size", Var("bk")))
+                    & Constructor("homogeneous",
+                                  Constructor("convolution", Var("c"))
+                                  & Constructor("activation", Var("af"))
+                                  & Constructor("dropout_p", Var("d"))
+                                  & Constructor("normalization", Var("n"))
+                                  & Constructor("normalization_epsilon", Var("e")))),
+
+
         }
 
     @staticmethod
@@ -663,23 +864,10 @@ if __name__ == "__main__":
         dimension_choices=[64, 128, 256],
         normalization_eps_choices=[1e-3],
         dropout_p_choices=[0.1],
-        kernel_size_choices=[5],
-        maxpool_size_choices=[3])
+        kernel_size_choices=[5, 3, 2],
+        maxpool_size_choices=[3, 5])
 
     target0 = (Constructor("u_model",
-                                                Constructor("in_and_out", Literal(128, "dimension"))
-                                                & Constructor("length", Literal(3, "length"))
-                                                )
-                    & Constructor("homogeneous",
-                                  Constructor("convolution", Literal(None, "convolution"))
-                                  & Constructor("activation", Literal(None, "activation_function"))
-                                  & Constructor("dropout_p", Literal(None, "dropout_p"))
-                                  & Constructor("normalization", Literal(None, "normalization"))
-                                  & Constructor("normalization_epsilon", Literal(None, "normalization_eps"))
-                                  )
-              )
-
-    target1 = (Constructor("u_model",
                                                 Constructor("in_and_out", Literal(128, "dimension"))
                                                 & Constructor("length", Literal(3, "length"))
                                                 )
@@ -687,15 +875,46 @@ if __name__ == "__main__":
                                   Constructor("in_and_out", Literal(64, "dimension"))
                                   & Constructor("kernel_size", Literal(1, "kernel_size")))
                     & Constructor("homogeneous",
-                                  Constructor("convolution", Literal(None, "convolution"))
-                                  & Constructor("activation", Literal(None, "activation_function"))
-                                  & Constructor("dropout_p", Literal(None, "dropout_p"))
-                                  & Constructor("normalization", Literal(None, "normalization"))
-                                  & Constructor("normalization_epsilon", Literal(None, "normalization_eps"))
+                                  Constructor("convolution", Literal("simple_convolution", "convolution"))
+                                  & Constructor("activation", Literal("ReLu", "activation_function"))
+                                  & Constructor("dropout_p", Literal(0.1, "dropout_p"))
+                                  & Constructor("normalization", Literal("channel_wise_norm", "normalization"))
+                                  & Constructor("normalization_epsilon", Literal(1e-3, "normalization_eps"))
                                   )
               )
 
-    target = target0
+    target1 = (Constructor("u_model",
+                           Constructor("in_and_out", Literal(256, "dimension"))
+                           & Constructor("length", Literal(3, "length"))
+                           )
+               & Constructor("homogeneous",
+                             Constructor("convolution", Literal(None, "convolution"))
+                             & Constructor("activation", Literal(None, "activation_function"))
+                             & Constructor("dropout_p", Literal(None, "dropout_p"))
+                             & Constructor("normalization", Literal(None, "normalization"))
+                             & Constructor("normalization_epsilon", Literal(None, "normalization_eps"))
+                             )
+               )
+
+    target2 = (
+            Constructor("u_model",
+                        Constructor("dimensions", Literal((256, 128, 128), "dimension_list")) # TODO: make dimension None-able!
+                        & Constructor("kernel_sizes", Literal((2, 3, 5), "kernel_size_list"))
+                        & Constructor("maxpool_sizes", Literal((5, 5, 3), "maxpool_size_list"))
+                        )
+            & Constructor("bottleneck",
+                          Constructor("in_and_out", Literal(64, "dimension"))
+                          & Constructor("kernel_size", Literal(1, "kernel_size")))
+            & Constructor("homogeneous",
+                          Constructor("convolution", Literal("simple_convolution", "convolution"))
+                          & Constructor("activation", Literal("ReLu", "activation_function"))
+                          & Constructor("dropout_p", Literal(0.1, "dropout_p"))
+                          & Constructor("normalization", Literal("channel_wise_norm", "normalization"))
+                          & Constructor("normalization_epsilon", Literal(1e-3, "normalization_eps"))
+                          )
+              )
+
+    target = target2
 
     print(repo.parameters())
 
