@@ -835,6 +835,37 @@ class UtimeRepository:
             return x
 
 
+    def pretty_term_algebra(self):
+        return {
+            "ReLu": "ReLu()",
+            "ELU": "ELU()",
+            "Tanh": "Tanh()",
+            "BatchNorm1d": (lambda n: f"BatchNorm1d({n})"),
+            "ChannelWiseNorm": (lambda n, e: f"ChannelWiseNormalization({n}, {e})"),
+            "Conv1dLayerNorm": (lambda n: f"Conv1dLayerNorm({n})"),
+            "Dropout1d": (lambda d: f"Dropout1d({d})"),
+            "Maxpool1d": (lambda n: f"MaxPool1d({n})"),
+            "Upsample1d": (lambda n: f"Upsample({n})"),
+            "Conv1d": (lambda i, o, k: f"Conv1d({i}, {o}, {k})"),
+            "DepthwiseSeparableConv1d": (lambda i, o, k: f"DepthwiseSeparableConv1d({i}, {o}, {k})"),
+            "ConvBlock": (lambda i, o, k, d, af, c, e, activation, dropout, c1, c2, norm:
+                          f"Conv_Block({activation}, {dropout}, {c1}, {c2}, {norm})"),
+            "Encoder": (lambda i, o, k, d, af, c, e, n, m, mp, cb: f"Encoder({cb}, {mp})"),
+            "Decoder": (lambda i, o, k, d, af, c, e, n, m, mp, cb: f"Decoder({cb}, {mp})"),
+            "Linear": (lambda i, o: f"Linear({i}, {o})"),
+            "UModel_length": (lambda i, out_enc, in_dec, k1, k2, d, af, c, e, n, m, enc, dec, cb:
+                              f"U_Model({enc}, {dec}, {cb})"),
+            "UModel_Cons_length": (lambda in_u, in_enc, in_dec, bd, k, bk, d, af, c, e, n, m, l, l_u, enc, dec, u_model:
+                                   f"U_Model_Cons({enc}, {dec}, {u_model})"),
+            "UModel_dkm_list": (lambda i, out_enc, in_dec, k1, k2, d, af, c, e, n, m, ds, ks, ms, enc, dec, cb:
+                                f"U_Model({enc}, {dec}, {cb})"),
+
+            "UModel_Cons_dkm_list": (lambda in_u, in_enc, in_dec, bd, k, bk, d, af, c, e, n, m,
+                                            dds, ds, kks, ks, mms, ms, enc, dec, u_model:
+                                     f"U_Model_Cons({enc}, {dec}, {u_model})"),
+
+        }
+
     def torch_algebra(self):
         return {
             "ReLu": nn.ReLU(),
@@ -920,6 +951,7 @@ if __name__ == "__main__":
                                     Literal((256, 128, 128), "dimension_list"))  # TODO: make dimension None-able!
                         & Constructor("kernel_sizes", Literal((2, None, 5), "kernel_size_list"))
                         & Constructor("maxpool_sizes", Literal((None, 5, None), "maxpool_size_list"))
+                        # TODO: if kernel_size or maxpool_size is None, then enc and dec must choose the same value! This is not enforced yet :-(
                         )
             & Constructor("bottleneck",
                           Constructor("in_and_out", Literal(64, "dimension"))
@@ -944,4 +976,4 @@ if __name__ == "__main__":
     trees = search_space.enumerate_trees(target, 10)
 
     for t in trees:
-        print(t)
+        print(t.interpret(repo.pretty_term_algebra()))
