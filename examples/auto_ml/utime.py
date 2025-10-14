@@ -954,6 +954,12 @@ class UtimeRepository:
             "Encoder": (lambda i, o, k, d, af, c, e, n, m, mp, cb, x: self._encoder(cb, mp, x)),
             "Decoder": (lambda i, o, k, d, af, c, e, n, m, mp, cb, x, y: self._decoder(cb, mp, x, y)),
             "Linear": (lambda i, o: nn.Linear(i, o)),
+            "UModel": (lambda i, out_enc, in_dec, k1, k2, d, af, c, e, n, m, ds, ks, ms, enc, dec, cb, x:
+                       self._umodel_length(enc, dec, cb, x)),
+
+            "UModel_Cons": (lambda in_u, in_enc, in_dec, bd, k, bk, d, af, c, e, n, m,
+                                   dds, ds, kks, ks, mms, ms, enc, dec, u_model, x:
+                            self._umodel_cons_length(enc, dec, u_model, x)),
             "UModel_length": (lambda i, out_enc, in_dec, k1, k2, d, af, c, e, n, m, enc, dec, cb, x:
                               self._umodel_length(enc, dec, cb, x)),
             "UModel_Cons_length": (lambda in_u, in_enc, in_dec, bd, k, bk, d, af, c, e, n, m, l, l_u, enc, dec, u_model, x:
