@@ -466,9 +466,9 @@ class UtimeRepository:
                                 Constructor("input", Var("in"))
                                 & Constructor("output", Var("out"))
                                 & Constructor("kernel_size", Var("k"))
-                                & Constructor("kernel_size", Literal(None, "kernel_size"))
+                                #& Constructor("kernel_size", Literal(None, "kernel_size"))
                                 & Constructor("upsample_size", Var("sf"))
-                                & Constructor("upsample_size", Literal(None, "maxpool_size"))
+                                #& Constructor("upsample_size", Literal(None, "maxpool_size"))
                                 )
                     & Constructor("homogeneous",
                                   Constructor("convolution", Var("c"))
@@ -489,165 +489,18 @@ class UtimeRepository:
                             )
             ),
 
-            "UModel_length": DSL()
-            .parameter("in", "dimension")
-            .parameter("out_enc", "dimension")
+            "UModel": DSL()
+            .parameter("in", "dimension", lambda v: [x for x in self.dimension_choices if x is not None])
+            .parameter("out_enc", "dimension", lambda v: [x for x in self.dimension_choices if x is not None])
             .parameter("in_dec", "dimension", lambda v: [2 * v["out_enc"]])
-            .parameter("k1", "kernel_size")
-            .parameter("k2", "kernel_size")
-            .parameter("d", "dropout_p")
-            .parameter("af", "activation_function")
-            .parameter("c", "convolution")
-            .parameter("e", "normalization_eps")
-            .parameter("n", "normalization")
-            .parameter("m", "maxpool_size")
-            .argument("enc", Constructor("encoder",
-                                            Constructor("input", Var("in"))
-                                            & Constructor("output", Var("out_enc"))
-                                            & Constructor("kernel_size", Var("k1"))
-                                            & Constructor("maxpool_size", Var("m"))
-                                         )
-                    & Constructor("homogeneous",
-                                  Constructor("convolution", Var("c"))
-                                  & Constructor("activation", Var("af"))
-                                  & Constructor("dropout_p", Var("d"))
-                                  & Constructor("normalization", Var("n"))
-                                  & Constructor("normalization_epsilon", Var("e"))
-                                  )
-                      )
-            .argument("dec",
-                      Constructor("decoder",
-                                Constructor("input", Var("in_dec"))
-                                & Constructor("output", Var("in"))
-                                & Constructor("kernel_size", Var("k1"))
-                                & Constructor("upsample_size", Var("m"))
-                                )
-                    & Constructor("homogeneous",
-                                  Constructor("convolution", Var("c"))
-                                  & Constructor("activation", Var("af"))
-                                  & Constructor("dropout_p", Var("d"))
-                                  & Constructor("normalization", Var("n"))
-                                  & Constructor("normalization_epsilon", Var("e"))
-                                  )
-                      )
-            .argument("cb", Constructor("conv_block",
-                                        Constructor("input", Var("out_enc"))
-                                        & Constructor("output", Var("out_enc"))
-                                        & Constructor("kernel_size", Var("k2")))
-                      & Constructor("homogeneous",
-                                    Constructor("convolution", Var("c"))
-                                    & Constructor("activation", Var("af"))
-                                    & Constructor("dropout_p", Var("d"))
-                                    & Constructor("normalization", Var("n"))
-                                    & Constructor("normalization_epsilon", Var("e"))))
-            .suffix(Constructor("u_model",
-                                                Constructor("in_and_out", Var("in"))
-                                                & Constructor("length", Literal(1, "length"))
-                                                )
-                    & Constructor("bottleneck",
-                                  Constructor("in_and_out", Var("out_enc"))
-                                  & Constructor("kernel_size", Var("k2")))
-                    & Constructor("homogeneous",
-                                  Constructor("convolution", Var("c"))
-                                  & Constructor("activation", Var("af"))
-                                  & Constructor("dropout_p", Var("d"))
-                                  & Constructor("normalization", Var("n"))
-                                  & Constructor("normalization_epsilon", Var("e")))
-            ),
-
-            "UModel_Cons_length": DSL()
-            .parameter("in_u", "dimension")  # in_u == out_enc
-            .parameter("in_enc", "dimension")
-            .parameter("in_dec", "dimension", lambda v: [2 * v["in_u"]])
-            .parameter("bd", "dimension")
-            .parameter("k", "kernel_size")
-            .parameter("bk", "kernel_size")
-            .parameter("d", "dropout_p")
-            .parameter("af", "activation_function")
-            .parameter("c", "convolution")
-            .parameter("e", "normalization_eps")
-            .parameter("n", "normalization")
-            .parameter("m", "maxpool_size")
-            .parameter("l", "length")
-            .parameter("l_u", "length", lambda v: [v["l"] - 1])
-            .argument("enc", Constructor("encoder",
-                                         Constructor("input", Var("in_enc"))
-                                         & Constructor("output", Var("in_u"))
-                                         & Constructor("kernel_size", Var("k"))
-                                         & Constructor("maxpool_size", Var("m"))
-                                         )
-                      & Constructor("homogeneous",
-                                    Constructor("convolution", Var("c"))
-                                    & Constructor("activation", Var("af"))
-                                    & Constructor("dropout_p", Var("d"))
-                                    & Constructor("normalization", Var("n"))
-                                    & Constructor("normalization_epsilon", Var("e"))
-                                    )
-                      )
-            .argument("dec", Constructor("decoder",
-                                         Constructor("input", Var("in_dec"))
-                                         & Constructor("output", Var("in_enc"))
-                                         & Constructor("kernel_size", Var("k"))
-                                         & Constructor("upsample_size", Var("m"))
-                                         )
-                      & Constructor("homogeneous",
-                                    Constructor("convolution", Var("c"))
-                                    & Constructor("activation", Var("af"))
-                                    & Constructor("dropout_p", Var("d"))
-                                    & Constructor("normalization", Var("n"))
-                                    & Constructor("normalization_epsilon", Var("e"))
-                                    )
-                      )
-            .argument("u_model", Constructor("u_model",
-                                                Constructor("in_and_out", Var("in_u"))
-                                                & Constructor("length", Var("l_u"))
-                                                )
-                    & Constructor("bottleneck",
-                                  Constructor("in_and_out", Var("bd"))
-                                  & Constructor("kernel_size", Var("bk")))
-                    & Constructor("homogeneous",
-                                  Constructor("convolution", Var("c"))
-                                  & Constructor("activation", Var("af"))
-                                  & Constructor("dropout_p", Var("d"))
-                                  & Constructor("normalization", Var("n"))
-                                  & Constructor("normalization_epsilon", Var("e"))))
-            .suffix(Constructor("u_model",
-                                                Constructor("in_and_out", Var("in_enc"))
-                                                & Constructor("length", Var("l"))
-                                                )
-                    & Constructor("bottleneck",
-                                  Constructor("in_and_out", Var("bd"))
-                                  & Constructor("kernel_size", Var("bk")))
-                    & Constructor("homogeneous",
-                                  Constructor("convolution", Var("c"))
-                                  & Constructor("activation", Var("af"))
-                                  & Constructor("dropout_p", Var("d"))
-                                  & Constructor("normalization", Var("n"))
-                                  & Constructor("normalization_epsilon", Var("e")))),
-
-
-
-            "UModel_dkm_list": DSL()
-            .parameter("in", "dimension")
-            .parameter("out_enc", "dimension")
-            .parameter_constraint(lambda v: v["out_enc"] is not None and v["in"] is not None)
-            .parameter("in_dec", "dimension", lambda v: [2 * v["out_enc"]])
-            .parameter("k1", "kernel_size")
-            .parameter_constraint(lambda v: v["k1"] is not None)
-            .parameter("k2", "kernel_size")
-            .parameter_constraint(lambda v: v["k2"] is not None)
-            .parameter("d", "dropout_p")
-            .parameter_constraint(lambda v: v["d"] is not None)
-            .parameter("af", "activation_function")
-            .parameter_constraint(lambda v: v["af"] is not None)
-            .parameter("c", "convolution")
-            .parameter_constraint(lambda v: v["c"] is not None)
-            .parameter("e", "normalization_eps")
-            .parameter_constraint(lambda v: v["e"] is not None)
-            .parameter("n", "normalization")
-            .parameter_constraint(lambda v: v["n"] is not None)
-            .parameter("m", "maxpool_size")
-            .parameter_constraint(lambda v: v["m"] is not None)
+            .parameter("k1", "kernel_size", lambda v: [x for x in self.kernel_size_choices if x is not None])
+            .parameter("k2", "kernel_size", lambda v: [x for x in self.kernel_size_choices if x is not None])
+            .parameter("d", "dropout_p", lambda v: [x for x in self.dropout_p_choices if x is not None])
+            .parameter("af", "activation_function", lambda v: [x for x in self.afs if x is not None])
+            .parameter("c", "convolution", lambda v: [x for x in self.convs if x is not None])
+            .parameter("e", "normalization_eps", lambda v: [x for x in self.normalization_eps_choices if x is not None])
+            .parameter("n", "normalization", lambda v: [x for x in self.norms if x is not None])
+            .parameter("m", "maxpool_size", lambda v: [x for x in self.maxpool_size_choices if x is not None])
             .parameter("ds", "dimension_list", lambda v: [(v["in"],), (None,)])
             .parameter("ks", "kernel_size_list", lambda v: [(v["k1"],), (None,)])
             .parameter("ms", "maxpool_size_list", lambda v: [(v["m"],), (None,)])
@@ -694,6 +547,9 @@ class UtimeRepository:
                                 & Constructor("kernel_sizes", Var("ks"))
                                 & Constructor("maxpool_sizes", Var("ms"))
                                 )
+                    #& Constructor("u_model",
+                    #              Constructor("in_and_out", Var("in"))
+                    #              & Constructor("length", Literal(1, "length")))
                     & Constructor("bottleneck",
                                   Constructor("in_and_out", Var("out_enc"))
                                   & Constructor("in_and_out", Literal(None, "dimension"))
@@ -714,27 +570,19 @@ class UtimeRepository:
                                   )
                     ),
 
-            "UModel_Cons_dkm_list": DSL()
-            .parameter("in_u", "dimension")  # in_u == out_enc
-            .parameter("in_enc", "dimension")
-            .parameter_constraint(lambda v: v["in_u"] is not None and v["in_enc"] is not None)
+            "UModel_Cons": DSL()
+            .parameter("in_u", "dimension", lambda v: [x for x in self.dimension_choices if x is not None])  # in_u == out_enc
+            .parameter("in_enc", "dimension", lambda v: [x for x in self.dimension_choices if x is not None])
             .parameter("in_dec", "dimension", lambda v: [2 * v["in_u"]])
             .parameter("bd", "dimension")
-            .parameter("k", "kernel_size")
-            .parameter_constraint(lambda v: v["k"] is not None)
+            .parameter("k", "kernel_size", lambda v: [x for x in self.kernel_size_choices if x is not None])
             .parameter("bk", "kernel_size")
-            .parameter("d", "dropout_p")
-            .parameter_constraint(lambda v: v["d"] is not None)
-            .parameter("af", "activation_function")
-            .parameter_constraint(lambda v: v["af"] is not None)
-            .parameter("c", "convolution")
-            .parameter_constraint(lambda v: v["c"] is not None)
-            .parameter("e", "normalization_eps")
-            .parameter_constraint(lambda v: v["e"] is not None)
-            .parameter("n", "normalization")
-            .parameter_constraint(lambda v: v["n"] is not None)
-            .parameter("m", "maxpool_size")
-            .parameter_constraint(lambda v: v["m"] is not None)
+            .parameter("d", "dropout_p", lambda v: [x for x in self.dropout_p_choices if x is not None])
+            .parameter("af", "activation_function", lambda v: [x for x in self.afs if x is not None])
+            .parameter("c", "convolution", lambda v: [x for x in self.convs if x is not None])
+            .parameter("e", "normalization_eps", lambda v: [x for x in self.normalization_eps_choices if x is not None])
+            .parameter("n", "normalization", lambda v: [x for x in self.norms if x is not None])
+            .parameter("m", "maxpool_size", lambda v: [x for x in self.maxpool_size_choices if x is not None])
             .parameter("dds", "dimension_list")
             .parameter_constraint(lambda v: len(v["dds"]) > 1 and (v["dds"][0] == v["in_enc"] or v["dds"][0] is None))
             .parameter("ds", "dimension_list", lambda v: [v["dds"][1:]])
@@ -746,7 +594,9 @@ class UtimeRepository:
             .parameter("mms", "maxpool_size_list")
             .parameter_constraint(lambda v: len(v["mms"]) > 1 and (v["mms"][0] == v["m"] or v["mms"][0] is None))
             .parameter("ms", "maxpool_size_list", lambda v: [v["mms"][1:]])
-            .parameter_constraint(lambda v: len(v["ms"]) > 0 )
+            .parameter_constraint(lambda v: len(v["ms"]) > 0)
+            #.parameter("l", "length")
+            #.parameter("l_u", "length", lambda v: [v["l"] - 1])  # l_u == len(ds), but (- 1) is more efficient then len
             .argument("enc", Constructor("encoder",
                                          Constructor("input", Var("in_enc"))
                                          & Constructor("output", Var("in_u"))
@@ -780,6 +630,9 @@ class UtimeRepository:
                                              & Constructor("kernel_sizes", Var("ks"))
                                              & Constructor("maxpool_sizes", Var("ms"))
                                              )
+                      #& Constructor("u_model",
+                      #              Constructor("in_and_out", Var("in_u"))
+                      #              & Constructor("length", Var("l_u")))
                       & Constructor("bottleneck",
                                     Constructor("in_and_out", Var("bd"))
                                     & Constructor("kernel_size", Var("bk")))
@@ -794,6 +647,190 @@ class UtimeRepository:
                                 & Constructor("kernel_sizes", Var("kks"))
                                 & Constructor("maxpool_sizes", Var("mms"))
                                 )
+                    #& Constructor("u_model",
+                    #              Constructor("in_and_out", Var("in_enc"))
+                    #              & Constructor("length", Var("l"))
+                    #              )
+                    & Constructor("bottleneck",
+                                  Constructor("in_and_out", Var("bd"))
+                                  & Constructor("kernel_size", Var("bk")))
+                    & Constructor("homogeneous",
+                                  Constructor("convolution", Var("c"))
+                                  & Constructor("convolution", Literal(None, "convolution"))
+                                  & Constructor("activation", Var("af"))
+                                  & Constructor("activation", Literal(None, "activation_function"))
+                                  & Constructor("dropout_p", Var("d"))
+                                  & Constructor("dropout_p", Literal(None, "dropout_p"))
+                                  & Constructor("normalization", Var("n"))
+                                  & Constructor("normalization", Literal(None, "normalization"))
+                                  & Constructor("normalization_epsilon", Var("e"))
+                                  & Constructor("normalization_epsilon", Literal(None, "normalization_eps"))
+                                  )
+                    ),
+
+            "UModel_length": DSL()
+            .parameter("in", "dimension", lambda v: [x for x in self.dimension_choices if x is not None])
+            .parameter("out_enc", "dimension", lambda v: [x for x in self.dimension_choices if x is not None])
+            .parameter("in_dec", "dimension", lambda v: [2 * v["out_enc"]])
+            .parameter("k1", "kernel_size", lambda v: [x for x in self.kernel_size_choices if x is not None])
+            .parameter("k2", "kernel_size", lambda v: [x for x in self.kernel_size_choices if x is not None])
+            .parameter("d", "dropout_p", lambda v: [x for x in self.dropout_p_choices if x is not None])
+            .parameter("af", "activation_function", lambda v: [x for x in self.afs if x is not None])
+            .parameter("c", "convolution", lambda v: [x for x in self.convs if x is not None])
+            .parameter("e", "normalization_eps", lambda v: [x for x in self.normalization_eps_choices if x is not None])
+            .parameter("n", "normalization", lambda v: [x for x in self.norms if x is not None])
+            .parameter("m", "maxpool_size", lambda v: [x for x in self.maxpool_size_choices if x is not None])
+            #.parameter("ds", "dimension_list", lambda v: [(v["in"],), (None,)])
+            #.parameter("ks", "kernel_size_list", lambda v: [(v["k1"],), (None,)])
+            #.parameter("ms", "maxpool_size_list", lambda v: [(v["m"],), (None,)])
+            .argument("enc", Constructor("encoder",
+                                         Constructor("input", Var("in"))
+                                         & Constructor("output", Var("out_enc"))
+                                         & Constructor("kernel_size", Var("k1"))
+                                         & Constructor("maxpool_size", Var("m"))
+                                         )
+                      & Constructor("homogeneous",
+                                    Constructor("convolution", Var("c"))
+                                    & Constructor("activation", Var("af"))
+                                    & Constructor("dropout_p", Var("d"))
+                                    & Constructor("normalization", Var("n"))
+                                    & Constructor("normalization_epsilon", Var("e"))
+                                    )
+                      )
+            .argument("dec", Constructor("decoder",
+                                         Constructor("input", Var("in_dec"))
+                                         & Constructor("output", Var("in"))
+                                         & Constructor("kernel_size", Var("k1"))
+                                         & Constructor("upsample_size", Var("m"))
+                                         )
+                      & Constructor("homogeneous",
+                                    Constructor("convolution", Var("c"))
+                                    & Constructor("activation", Var("af"))
+                                    & Constructor("dropout_p", Var("d"))
+                                    & Constructor("normalization", Var("n"))
+                                    & Constructor("normalization_epsilon", Var("e"))
+                                    )
+                      )
+            .argument("cb", Constructor("conv_block",
+                                        Constructor("input", Var("out_enc"))
+                                        & Constructor("output", Var("out_enc"))
+                                        & Constructor("kernel_size", Var("k2")))
+                      & Constructor("homogeneous",
+                                    Constructor("convolution", Var("c"))
+                                    & Constructor("activation", Var("af"))
+                                    & Constructor("dropout_p", Var("d"))
+                                    & Constructor("normalization", Var("n"))
+                                    & Constructor("normalization_epsilon", Var("e"))))
+            .suffix( # Constructor("u_model",
+                     #            Constructor("dimensions", Var("ds"))
+                     #            & Constructor("kernel_sizes", Var("ks"))
+                     #            & Constructor("maxpool_sizes", Var("ms"))
+                     #            )
+                    Constructor("u_model",
+                                  Constructor("in_and_out", Var("in"))
+                                  & Constructor("length", Literal(1, "length")))
+                    & Constructor("bottleneck",
+                                  Constructor("in_and_out", Var("out_enc"))
+                                  & Constructor("in_and_out", Literal(None, "dimension"))
+                                  & Constructor("kernel_size", Var("k2"))
+                                  & Constructor("kernel_size", Literal(None, "kernel_size"))
+                                  )
+                    & Constructor("homogeneous",
+                                  Constructor("convolution", Var("c"))
+                                  & Constructor("convolution", Literal(None, "convolution"))
+                                  & Constructor("activation", Var("af"))
+                                  & Constructor("activation", Literal(None, "activation_function"))
+                                  & Constructor("dropout_p", Var("d"))
+                                  & Constructor("dropout_p", Literal(None, "dropout_p"))
+                                  & Constructor("normalization", Var("n"))
+                                  & Constructor("normalization", Literal(None, "normalization"))
+                                  & Constructor("normalization_epsilon", Var("e"))
+                                  & Constructor("normalization_epsilon", Literal(None, "normalization_eps"))
+                                  )
+                    ),
+
+            "UModel_Cons_length": DSL()
+            .parameter("in_u", "dimension",
+                       lambda v: [x for x in self.dimension_choices if x is not None])  # in_u == out_enc
+            .parameter("in_enc", "dimension", lambda v: [x for x in self.dimension_choices if x is not None])
+            .parameter("in_dec", "dimension", lambda v: [2 * v["in_u"]])
+            .parameter("bd", "dimension")
+            .parameter("k", "kernel_size", lambda v: [x for x in self.kernel_size_choices if x is not None])
+            .parameter("bk", "kernel_size")
+            .parameter("d", "dropout_p", lambda v: [x for x in self.dropout_p_choices if x is not None])
+            .parameter("af", "activation_function", lambda v: [x for x in self.afs if x is not None])
+            .parameter("c", "convolution", lambda v: [x for x in self.convs if x is not None])
+            .parameter("e", "normalization_eps", lambda v: [x for x in self.normalization_eps_choices if x is not None])
+            .parameter("n", "normalization", lambda v: [x for x in self.norms if x is not None])
+            .parameter("m", "maxpool_size", lambda v: [x for x in self.maxpool_size_choices if x is not None])
+            #.parameter("dds", "dimension_list")
+            #.parameter_constraint(lambda v: len(v["dds"]) > 1 and (v["dds"][0] == v["in_enc"] or v["dds"][0] is None))
+            #.parameter("ds", "dimension_list", lambda v: [v["dds"][1:]])
+            #.parameter_constraint(lambda v: len(v["ds"]) > 0 and (v["ds"][0] == v["in_u"] or v["ds"][0] is None))
+            #.parameter("kks", "kernel_size_list")
+            #.parameter_constraint(lambda v: len(v["kks"]) > 1 and (v["kks"][0] == v["k"] or v["kks"][0] is None))
+            #.parameter("ks", "kernel_size_list", lambda v: [v["kks"][1:]])
+            #.parameter_constraint(lambda v: len(v["ks"]) > 0)
+            #.parameter("mms", "maxpool_size_list")
+            #.parameter_constraint(lambda v: len(v["mms"]) > 1 and (v["mms"][0] == v["m"] or v["mms"][0] is None))
+            #.parameter("ms", "maxpool_size_list", lambda v: [v["mms"][1:]])
+            #.parameter_constraint(lambda v: len(v["ms"]) > 0)
+            .parameter("l", "length")
+            .parameter("l_u", "length", lambda v: [v["l"] - 1])  # l_u == len(ds), but (- 1) is more efficient then len
+            .argument("enc", Constructor("encoder",
+                                         Constructor("input", Var("in_enc"))
+                                         & Constructor("output", Var("in_u"))
+                                         & Constructor("kernel_size", Var("k"))
+                                         & Constructor("maxpool_size", Var("m"))
+                                         )
+                      & Constructor("homogeneous",
+                                    Constructor("convolution", Var("c"))
+                                    & Constructor("activation", Var("af"))
+                                    & Constructor("dropout_p", Var("d"))
+                                    & Constructor("normalization", Var("n"))
+                                    & Constructor("normalization_epsilon", Var("e"))
+                                    )
+                      )
+            .argument("dec", Constructor("decoder",
+                                         Constructor("input", Var("in_dec"))
+                                         & Constructor("output", Var("in_enc"))
+                                         & Constructor("kernel_size", Var("k"))
+                                         & Constructor("upsample_size", Var("m"))
+                                         )
+                      & Constructor("homogeneous",
+                                    Constructor("convolution", Var("c"))
+                                    & Constructor("activation", Var("af"))
+                                    & Constructor("dropout_p", Var("d"))
+                                    & Constructor("normalization", Var("n"))
+                                    & Constructor("normalization_epsilon", Var("e"))
+                                    )
+                      )
+            .argument("u_model", #Constructor("u_model",
+                                       #      Constructor("dimensions", Var("ds"))
+                                       #      & Constructor("kernel_sizes", Var("ks"))
+                                        #     & Constructor("maxpool_sizes", Var("ms"))
+                                        #     )
+                      Constructor("u_model",
+                                    Constructor("in_and_out", Var("in_u"))
+                                    & Constructor("length", Var("l_u")))
+                      & Constructor("bottleneck",
+                                    Constructor("in_and_out", Var("bd"))
+                                    & Constructor("kernel_size", Var("bk")))
+                      & Constructor("homogeneous",
+                                    Constructor("convolution", Var("c"))
+                                    & Constructor("activation", Var("af"))
+                                    & Constructor("dropout_p", Var("d"))
+                                    & Constructor("normalization", Var("n"))
+                                    & Constructor("normalization_epsilon", Var("e"))))
+            .suffix(#Constructor("u_model",
+                    #            Constructor("dimensions", Var("dds"))
+                    #            & Constructor("kernel_sizes", Var("kks"))
+                    #            & Constructor("maxpool_sizes", Var("mms"))
+                    #            )
+                    Constructor("u_model",
+                                  Constructor("in_and_out", Var("in_enc"))
+                                  & Constructor("length", Var("l"))
+                                  )
                     & Constructor("bottleneck",
                                   Constructor("in_and_out", Var("bd"))
                                   & Constructor("kernel_size", Var("bk")))
@@ -886,17 +923,17 @@ class UtimeRepository:
             "Encoder": (lambda i, o, k, d, af, c, e, n, m, mp, cb: f"Encoder({cb}, {mp})"),
             "Decoder": (lambda i, o, k, d, af, c, e, n, m, mp, cb: f"Decoder({cb}, {mp})"),
             "Linear": (lambda i, o: f"Linear({i}, {o})"),
-            "UModel_length": (lambda i, out_enc, in_dec, k1, k2, d, af, c, e, n, m, enc, dec, cb:
-                              f"U_Model({enc}, {dec}, {cb})"),
-            "UModel_Cons_length": (lambda in_u, in_enc, in_dec, bd, k, bk, d, af, c, e, n, m, l, l_u, enc, dec, u_model:
-                                   f"U_Model_Cons({enc}, {dec}, {u_model})"),
-            "UModel_dkm_list": (lambda i, out_enc, in_dec, k1, k2, d, af, c, e, n, m, ds, ks, ms, enc, dec, cb:
-                                f"U_Model({enc}, {dec}, {cb})"),
+            "UModel": (lambda i, out_enc, in_dec, k1, k2, d, af, c, e, n, m, ds, ks, ms, enc, dec, cb:
+                       f"U_Model({enc}, {dec}, {cb})"),
 
-            "UModel_Cons_dkm_list": (lambda in_u, in_enc, in_dec, bd, k, bk, d, af, c, e, n, m,
+            "UModel_Cons": (lambda in_u, in_enc, in_dec, bd, k, bk, d, af, c, e, n, m,
                                             dds, ds, kks, ks, mms, ms, enc, dec, u_model:
-                                     f"U_Model_Cons({enc}, {dec}, {u_model})"),
+                            f"U_Model_Cons({enc}, {dec}, {u_model})"),
+            "UModel_length": (lambda i, out_enc, in_dec, k1, k2, d, af, c, e, n, m, enc, dec, cb:
+                       f"U_Model({enc}, {dec}, {cb})"),
 
+            "UModel_Cons_length": (lambda in_u, in_enc, in_dec, bd, k, bk, d, af, c, e, n, m, l, l_u, enc, dec, u_model:
+                            f"U_Model_Cons({enc}, {dec}, {u_model})"),
         }
 
     def torch_algebra(self):
