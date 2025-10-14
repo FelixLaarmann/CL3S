@@ -91,6 +91,7 @@ class UtimeRepository:
         self.dropout_p_choices.append(None)
         self.kernel_size_choices.append(None)
         self.maxpool_size_choices.append(None)
+        self.dimension_choices.append(None)
 
         self.convs = ["simple_convolution", "depthwise_separable_convolution", None]
 
@@ -629,18 +630,27 @@ class UtimeRepository:
             "UModel_dkm_list": DSL()
             .parameter("in", "dimension")
             .parameter("out_enc", "dimension")
+            .parameter_constraint(lambda v: v["out_enc"] is not None and v["in"] is not None)
             .parameter("in_dec", "dimension", lambda v: [2 * v["out_enc"]])
             .parameter("k1", "kernel_size")
+            .parameter_constraint(lambda v: v["k1"] is not None)
             .parameter("k2", "kernel_size")
+            .parameter_constraint(lambda v: v["k2"] is not None)
             .parameter("d", "dropout_p")
+            .parameter_constraint(lambda v: v["d"] is not None)
             .parameter("af", "activation_function")
+            .parameter_constraint(lambda v: v["af"] is not None)
             .parameter("c", "convolution")
+            .parameter_constraint(lambda v: v["c"] is not None)
             .parameter("e", "normalization_eps")
+            .parameter_constraint(lambda v: v["e"] is not None)
             .parameter("n", "normalization")
+            .parameter_constraint(lambda v: v["n"] is not None)
             .parameter("m", "maxpool_size")
-            .parameter("ds", "dimension_list", lambda v: [(v["in"],)])
-            .parameter("ks", "kernel_size_list", lambda v: [(v["k1"],)])
-            .parameter("ms", "maxpool_size_list", lambda v: [(v["m"],)])
+            .parameter_constraint(lambda v: v["m"] is not None)
+            .parameter("ds", "dimension_list", lambda v: [(v["in"],), (None,)])
+            .parameter("ks", "kernel_size_list", lambda v: [(v["k1"],), (None,)])
+            .parameter("ms", "maxpool_size_list", lambda v: [(v["m"],), (None,)])
             .argument("enc", Constructor("encoder",
                                          Constructor("input", Var("in"))
                                          & Constructor("output", Var("out_enc"))
@@ -686,38 +696,55 @@ class UtimeRepository:
                                 )
                     & Constructor("bottleneck",
                                   Constructor("in_and_out", Var("out_enc"))
-                                  & Constructor("kernel_size", Var("k2")))
+                                  & Constructor("in_and_out", Literal(None, "dimension"))
+                                  & Constructor("kernel_size", Var("k2"))
+                                  & Constructor("kernel_size", Literal(None, "kernel_size"))
+                                  )
                     & Constructor("homogeneous",
                                   Constructor("convolution", Var("c"))
+                                  & Constructor("convolution", Literal(None, "convolution"))
                                   & Constructor("activation", Var("af"))
+                                  & Constructor("activation", Literal(None, "activation_function"))
                                   & Constructor("dropout_p", Var("d"))
+                                  & Constructor("dropout_p", Literal(None, "dropout_p"))
                                   & Constructor("normalization", Var("n"))
-                                  & Constructor("normalization_epsilon", Var("e")))
+                                  & Constructor("normalization", Literal(None, "normalization"))
+                                  & Constructor("normalization_epsilon", Var("e"))
+                                  & Constructor("normalization_epsilon", Literal(None, "normalization_eps"))
+                                  )
                     ),
 
             "UModel_Cons_dkm_list": DSL()
             .parameter("in_u", "dimension")  # in_u == out_enc
             .parameter("in_enc", "dimension")
+            .parameter_constraint(lambda v: v["in_u"] is not None and v["in_enc"] is not None)
             .parameter("in_dec", "dimension", lambda v: [2 * v["in_u"]])
             .parameter("bd", "dimension")
             .parameter("k", "kernel_size")
+            .parameter_constraint(lambda v: v["k"] is not None)
             .parameter("bk", "kernel_size")
             .parameter("d", "dropout_p")
+            .parameter_constraint(lambda v: v["d"] is not None)
             .parameter("af", "activation_function")
+            .parameter_constraint(lambda v: v["af"] is not None)
             .parameter("c", "convolution")
+            .parameter_constraint(lambda v: v["c"] is not None)
             .parameter("e", "normalization_eps")
+            .parameter_constraint(lambda v: v["e"] is not None)
             .parameter("n", "normalization")
+            .parameter_constraint(lambda v: v["n"] is not None)
             .parameter("m", "maxpool_size")
+            .parameter_constraint(lambda v: v["m"] is not None)
             .parameter("dds", "dimension_list")
-            .parameter_constraint(lambda v: len(v["dds"]) > 1 and v["dds"][0] == v["in_enc"])
+            .parameter_constraint(lambda v: len(v["dds"]) > 1 and (v["dds"][0] == v["in_enc"] or v["dds"][0] is None))
             .parameter("ds", "dimension_list", lambda v: [v["dds"][1:]])
-            .parameter_constraint(lambda v: len(v["ds"]) > 0 and v["ds"][0] == v["in_u"])
+            .parameter_constraint(lambda v: len(v["ds"]) > 0 and (v["ds"][0] == v["in_u"] or v["ds"][0] is None))
             .parameter("kks", "kernel_size_list")
-            .parameter_constraint(lambda v: len(v["kks"]) > 1 and v["kks"][0] == v["k"])
+            .parameter_constraint(lambda v: len(v["kks"]) > 1 and (v["kks"][0] == v["k"] or v["kks"][0] is None))
             .parameter("ks", "kernel_size_list", lambda v: [v["kks"][1:]])
             .parameter_constraint(lambda v: len(v["ks"]) > 0)
             .parameter("mms", "maxpool_size_list")
-            .parameter_constraint(lambda v: len(v["mms"]) > 1 and v["mms"][0] == v["m"])
+            .parameter_constraint(lambda v: len(v["mms"]) > 1 and (v["mms"][0] == v["m"] or v["mms"][0] is None))
             .parameter("ms", "maxpool_size_list", lambda v: [v["mms"][1:]])
             .parameter_constraint(lambda v: len(v["ms"]) > 0 )
             .argument("enc", Constructor("encoder",
@@ -772,11 +799,17 @@ class UtimeRepository:
                                   & Constructor("kernel_size", Var("bk")))
                     & Constructor("homogeneous",
                                   Constructor("convolution", Var("c"))
+                                  & Constructor("convolution", Literal(None, "convolution"))
                                   & Constructor("activation", Var("af"))
+                                  & Constructor("activation", Literal(None, "activation_function"))
                                   & Constructor("dropout_p", Var("d"))
+                                  & Constructor("dropout_p", Literal(None, "dropout_p"))
                                   & Constructor("normalization", Var("n"))
-                                  & Constructor("normalization_epsilon", Var("e")))),
-
+                                  & Constructor("normalization", Literal(None, "normalization"))
+                                  & Constructor("normalization_epsilon", Var("e"))
+                                  & Constructor("normalization_epsilon", Literal(None, "normalization_eps"))
+                                  )
+                    ),
 
         }
 
@@ -948,14 +981,13 @@ if __name__ == "__main__":
     target3 = (
             Constructor("u_model",
                         Constructor("dimensions",
-                                    Literal((256, 128, 128), "dimension_list"))  # TODO: make dimension None-able!
-                        & Constructor("kernel_sizes", Literal((2, None, 5), "kernel_size_list"))
+                                    Literal((256, None, 128), "dimension_list"))
+                        & Constructor("kernel_sizes", Literal((None, None, 5), "kernel_size_list"))
                         & Constructor("maxpool_sizes", Literal((None, 5, None), "maxpool_size_list"))
-                        # TODO: if kernel_size or maxpool_size is None, then enc and dec must choose the same value! This is not enforced yet :-(
                         )
             & Constructor("bottleneck",
-                          Constructor("in_and_out", Literal(64, "dimension"))
-                          & Constructor("kernel_size", Literal(1, "kernel_size")))
+                          Constructor("in_and_out", Literal(None, "dimension"))
+                          & Constructor("kernel_size", Literal(None, "kernel_size")))
             & Constructor("homogeneous",
                           Constructor("convolution", Literal("simple_convolution", "convolution"))
                           & Constructor("activation", Literal(None, "activation_function"))
@@ -974,6 +1006,8 @@ if __name__ == "__main__":
     search_space = synthesizer.construct_search_space(target).prune()
 
     trees = search_space.enumerate_trees(target, 10)
+
+    #trees = search_space.sample(2, target)
 
     for t in trees:
         print(t.interpret(repo.pretty_term_algebra()))
