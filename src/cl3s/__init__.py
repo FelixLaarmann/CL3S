@@ -4,7 +4,7 @@ cl3s: Combinatory Logic Search Space Synthesizer
 This package provides utilities for working with derivation trees,
 search spaces, and genetic programming operations such as crossover and mutation.
 """
-from cosy import SolutionSpace, Type
+from cosy.solution_space import SolutionSpace
 
 from .tree import DerivationTree
 from .search_space import SearchSpace
@@ -13,16 +13,16 @@ from .synthesizer import SearchSpaceSynthesizer
 from collections.abc import Hashable, Iterable, Mapping
 from typing import Any, Generic, TypeVar, Hashable
 
-from cosy.dsl import DSL
+from cosy.specification_builder import SpecificationBuilder
 from cosy.subtypes import Subtypes, Taxonomy
-from cosy.synthesizer import ParameterSpace, Specification
-from cosy.types import Arrow, Constructor, Intersection, Literal, Omega, Type, Var
+from cosy.synthesizer import Specification
+from cosy.types import Arrow, Constructor, Intersection, Literal, Omega, Type, Var, Group, DataGroup
 
 
 __version__ = "0.0.1"
 
 __all__ = [
-    "DSL",
+    "SpecificationBuilder",
     "Literal",
     "Var",
     "Subtypes",
@@ -35,8 +35,9 @@ __all__ = [
     "DerivationTree",
     "SearchSpaceSynthesizer",
     "Specification",
-    "ParameterSpace",
     "Taxonomy",
+    "Group",
+    "DataGroup",
 ]
 
 
@@ -44,20 +45,17 @@ T = TypeVar("T", bound=Hashable)
 
 class CL3S(Generic[T]):
     component_specifications: Mapping[T, Specification]
-    parameter_space: ParameterSpace | None = None
     taxonomy: Taxonomy | None = None
     _synthesizer: SearchSpaceSynthesizer
 
     def __init__(
         self,
         component_specifications: Mapping[T, Specification],
-        parameter_space: ParameterSpace | None = None,
         taxonomy: Taxonomy | None = None,
     ) -> None:
         self.component_specifications = component_specifications
-        self.parameter_space = parameter_space
         self.taxonomy = taxonomy if taxonomy is not None else {}
-        self._synthesizer = SearchSpaceSynthesizer(component_specifications, parameter_space, self.taxonomy)
+        self._synthesizer = SearchSpaceSynthesizer(component_specifications, None, self.taxonomy)
 
     def solve(self, query: Type, max_count: int = 100) -> Iterable[Any]:
         """

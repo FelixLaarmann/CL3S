@@ -3,17 +3,15 @@ import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import GenericKernelMixin
 
-from collections.abc import Callable, Hashable, Sequence
+from collections.abc import Hashable
 
-from typing import Any, Generic, Optional, TypeVar, Union, Generator
-import typing
+from typing import Generic, TypeVar
 
-from cl3s.scikit.graph_kernel import WeisfeilerLehmanKernel
+from src.cl3s.scikit.graph_kernel import WeisfeilerLehmanKernel
 
 from .acquisition_function import ExpectedImprovement, EvolutionaryAcquisitionFunctionOptimization
 
 from ..search_space import SearchSpace
-from ..tree import DerivationTree
 
 NT = TypeVar("NT", bound=Hashable) # type of non-terminals
 T = TypeVar("T", bound=Hashable) # type of terminals

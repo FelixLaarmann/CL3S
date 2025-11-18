@@ -3,15 +3,13 @@ import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
 
 from scipy.stats import norm
-from scipy.optimize import minimize
 
-from collections.abc import Callable, Hashable, Sequence
+from collections.abc import Hashable
 
-from typing import Any, Generic, Optional, TypeVar, Union, Generator
-import typing
+from typing import Generic, TypeVar
 
-from cl3s.genetic_programming.evolutionary_search import TournamentSelection
-from cl3s.search_space import SearchSpace
+from src.cl3s.genetic_programming.evolutionary_search import TournamentSelection
+from src.cl3s.search_space import SearchSpace
 
 NT = TypeVar("NT", bound=Hashable) # type of non-terminals
 T = TypeVar("T", bound=Hashable) # type of terminals
