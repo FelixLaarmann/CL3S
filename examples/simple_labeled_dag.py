@@ -25,7 +25,7 @@ class Labeled_DAG_Repository:
         def unfold_none(self, value):
             result = [()]
             for i, v in enumerate(value):
-                old_result = result
+                old_result = result.copy()
                 result = []
                 if v is not None:
                     for r in old_result:
@@ -47,25 +47,18 @@ class Labeled_DAG_Repository:
             self.labels = labels
             self.max_length = max_length
 
-        def iter_len(self, length: int, pred=None):
-            if length > self.max_length:
-                return
-            elif length == 0:
-                yield ()
-            else:
-                for label in self.labels:
-                    if pred is None:
-                        for suffix in self.iter_len(length - 1):
-                            yield (label,) + suffix
-                    else:
-                        for suffix in pred:
-                            yield (label,) + suffix
-
         def __iter__(self):
-            pred = None
-            for n in range(self.max_length + 1):
-                pred = self.iter_len(n, pred)
-                yield from pred # TODO: fix __iter__()!
+            result = set()
+
+            for n in range(0, self.max_length + 1):
+                if n == 0:
+                    result.add(())
+                else:
+                    old_result = result.copy()
+                    for label in self.labels:
+                        for suffix in old_result:
+                            result.add((label,) + suffix)
+            yield from result
 
         def __contains__(self, value):
             return (isinstance(value, tuple) or value is None) and all(True if v is None else v in self.labels for v in value)
@@ -76,11 +69,12 @@ class Labeled_DAG_Repository:
             else:
                 result = [()]
                 for v in value:
-                    old_result = result
+                    old_result = result.copy()
                     result = []
                     if v is not None:
                         for r in old_result:
-                            result.append(r + (v,))
+                            for vv in self.labels.unfold_none(v):
+                                result.append(r + (vv,))
                     else:
                         for r in old_result:
                             for label in self.labels:
@@ -102,11 +96,12 @@ class Labeled_DAG_Repository:
         def unfold_none(self, value):
             result = [()]
             for v in value:
-                old_result = result
+                old_result = result.copy()
                 result = []
                 if v is not None:
                     for r in old_result:
-                        result.append(r + (v,))
+                        for vv in self.label_tuples.unfold_none(v):
+                            result.append(r + (vv,))
                 else:
                     for r in old_result:
                         for label in self.label_tuples:
@@ -143,8 +138,8 @@ class Labeled_DAG_Repository:
             .parameter("ls1", labeltupletuples, lambda v: [((v["l"],),), (((),),)] if v["i1"] == v["o1"] == 1 else [((v["l"],),)])
             .parameter("ls", labeltupletuples)
             .parameter("ls3", labeltupletuples, lambda v: labeltupletuples.unfold_none(v["ls"]))
-            .parameter_constraint(lambda v: len(v["ls3"]) > 1 and v["ls3"][:1] == v["ls1"])
-            .parameter("ls2", labeltupletuples, lambda v: [v["ls3"][1:]])
+            .parameter_constraint(lambda v: len(v["ls3"]) > 0 and len(v["ls3"][0]) > 1 and ((v["ls3"][0][0],),) == v["ls1"])
+            .parameter("ls2", labeltupletuples, lambda v: [(v["ls3"][0][1:],)])
             .argument("x", Constructor("DAG",
                                        Constructor("input", Var("i1"))
                                        & Constructor("output", Var("o1"))
@@ -163,10 +158,10 @@ class Labeled_DAG_Repository:
             .parameter("j", dimension)
             .parameter("o", dimension)
             .parameter("ls", labeltupletuples)
-            .parameter_constraint(lambda v: len(v["ls"]) > 0)
+            .parameter_constraint(lambda v: len(v["ls"]) > 1)
             .parameter("ls3", labeltupletuples, lambda v: labeltupletuples.unfold_none(v["ls"]))
-            .parameter("ls1", labeltuples, lambda v: [v["ls3"][0]])
-            .parameter("ls2", labeltupletuples, lambda v: [v["ls3"][1:]])
+            .parameter("ls1", labeltuples, lambda v: [v["ls3"][:1]])
+            .parameter("ls2", labeltupletuples, lambda v: [v["ls3"][1:]]) # TODO label dimension must match!!!
             .argument("x", Constructor("DAG",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("j"))
@@ -186,15 +181,22 @@ if __name__ == "__main__":
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
     io_labels = repo.Para(['A', 'B', 'C'], range(1, 10))
-    labeltuples = repo.ParaTuples(io_labels, 1)
-    labeltupletuples = repo.ParaTupleTuples(labeltuples)
+    #labeltuples = repo.ParaTuples(io_labels, 2)
+    #labeltupletuples = repo.ParaTupleTuples(labeltuples)
 
     #x = labeltuples.iter_len(1, [()])
 
+    #y = labeltuples.iter_len(2, x)
+
     #print(list(x))
 
-    for t in labeltuples:
-        print(t)
+    #print(list(y))
+
+    #for t in io_labels:
+    #    print(t)
+
+    #for n in labeltuples.unfold_none((("A", 2, 3), ("B", None, 5), None)):
+    #    print(n)
 
     #for n in labeltupletuples.unfold_none(((("A", 2, 3), ("B", None, 5)), (("C", 2, 3), None), None)):
     #    print(n)
@@ -206,9 +208,9 @@ if __name__ == "__main__":
                           & Constructor("structure", Literal((((),),))))
 
     target1 = Constructor("DAG",
-                          Constructor("input", Literal(1))
-                          & Constructor("output", Literal(2))
-                          & Constructor("structure", Literal(((("A", 1, 2),),))))
+                          Constructor("input", Literal(3))
+                          & Constructor("output", Literal(1))
+                          & Constructor("structure", Literal(((("C", 3, 1),),))))
 
     target2 = Constructor("DAG",
                           Constructor("input", Literal(3))
@@ -218,9 +220,11 @@ if __name__ == "__main__":
     target3 = Constructor("DAG",
                           Constructor("input", Literal(3))
                           & Constructor("output", Literal(1))
-                          & Constructor("structure", Literal(((("A", 1, 2), ("B", 2, 1)), (("C", 3, 1)),))))
+                          & Constructor("structure", Literal(((("A", 1, 2), ("B", 2, 1),), (("C", 3, 1),),))))
 
-    target = target2
+    target = target3
+
+    print(target)
 
     search_space = synthesizer.construct_search_space(target)
 
