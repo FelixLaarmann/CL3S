@@ -9,14 +9,17 @@ class Labeled_DAG_Repository:
         name = "Para"
 
         def __init__(self, labels, dimensions):
-            self.labels = labels
-            self.dimensions = dimensions
+            self.labels = list(labels) + [None]
+            self.dimensions = list(dimensions) + [None]
 
         def __iter__(self):
             for l in self.labels:
-                for i in self.dimensions:
-                    for o in self.dimensions:
-                        yield (l, i, o)
+                if l is not None:
+                    for i in self.dimensions:
+                        if i is not None:
+                            for o in self.dimensions:
+                                if o is not None:
+                                    yield (l, i, o)
 
         def __contains__(self, value):
             return (isinstance(value, tuple) and len(value) == 3 and value[0] in self.labels
@@ -34,16 +37,18 @@ class Labeled_DAG_Repository:
                     for r in old_result:
                         if i == 0:
                             for l in self.labels:
-                                result.append(r + (l,))
+                                if l is not None:
+                                    result.append(r + (l,))
                         else:
                             for d in self.dimensions:
-                                result.append(r + (d,))
+                                if d is not None:
+                                    result.append(r + (d,))
             return result
 
     class ParaTuples(Group):
         name = "ParaTuples"
 
-        def __init__(self, labels, max_length=100):
+        def __init__(self, labels, max_length=3):
             self.labels = labels
             self.max_length = max_length
 
@@ -101,12 +106,32 @@ class Labeled_DAG_Repository:
                 if v is not None:
                     for r in old_result:
                         for vv in self.label_tuples.unfold_none(v):
-                            result.append(r + (vv,))
+                            if r == ():
+                                result.append(r + (vv,))
+                            else:
+                                (r_i, r_o) = Labeled_DAG_Repository.compute_dimension_of_tuple_tuple(r)
+                                (vv_i, vv_o) = Labeled_DAG_Repository.compute_dimension_of_tuple_tuple((vv,))
+                                if r_o == vv_i:
+                                    result.append(r + (vv,))
                 else:
                     for r in old_result:
-                        for label in self.label_tuples:
-                            result.append(r + (label,))
+                        for vv in self.label_tuples:
+                            if r == ():
+                                result.append(r + (vv,))
+                            else:
+                                (r_i, r_o) = Labeled_DAG_Repository.compute_dimension_of_tuple_tuple(r)
+                                (vv_i, vv_o) = Labeled_DAG_Repository.compute_dimension_of_tuple_tuple((vv,))
+                                if r_o == vv_i:
+                                    result.append(r + (vv,))
             return result
+
+    @staticmethod
+    def compute_dimension_of_tuple_tuple(para_tuple_tuple):
+        input_dim = sum(t[1] for t in para_tuple_tuple[0])
+        output_dim = sum(t[2] for t in para_tuple_tuple[-1])
+        return input_dim, output_dim
+
+
 
     def specification(self):
         labels = DataGroup("labels", self.labels)
@@ -115,16 +140,29 @@ class Labeled_DAG_Repository:
         labeltupletuples = self.ParaTupleTuples(labeltuples)
         dimension = DataGroup("dimension", self.dimensions)
         return {
-            "edge": Constructor("DAG", Constructor("input", Literal(1)) & Constructor("output", Literal(1))
-                                & Constructor("structure", Literal((((),),)))),
+            "edge": Constructor("DAG", Constructor("input", Literal(1))
+                                & Constructor("input", Literal(None))
+                                & Constructor("output", Literal(1))
+                                & Constructor("output", Literal(None))
+                                & Constructor("structure", Literal((((),),)))
+                                & Constructor("structure", Literal(((None,),)))),  # TODO: include edges in variance, but respect laws
             "node": SpecificationBuilder()
+            .parameter("l", labels)
             .parameter("i", dimension)
             .parameter("o", dimension)
-            .parameter("l", labels)
-            .parameter("ls", labeltupletuples, lambda v: [(((v["l"], v["i"], v["o"]),),)])
+            .parameter("ls", labeltupletuples, lambda v: [(((v["l"], v["i"], v["o"]),),),
+                                                          (((v["l"], v["i"], None),),),
+                                                          (((v["l"], None, v["o"]),),),
+                                                          (((None, v["i"], v["o"]),),),
+                                                          (((v["l"], None, None),),),
+                                                          (((None, None, v["o"]),),),
+                                                          (((None, v["i"], None),),),
+                                                          (((None, None, None),),)])
             .suffix(Constructor("DAG",
                                 Constructor("input", Var("i"))
+                                & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
+                                & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("ls")))),
 
             "beside": SpecificationBuilder()
@@ -150,7 +188,9 @@ class Labeled_DAG_Repository:
                                        & Constructor("structure", Var("ls2"))))
             .suffix(Constructor("DAG",
                                 Constructor("input", Var("i"))
+                                & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
+                                & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("ls")))),
 
             "before": SpecificationBuilder()
@@ -160,8 +200,10 @@ class Labeled_DAG_Repository:
             .parameter("ls", labeltupletuples)
             .parameter_constraint(lambda v: len(v["ls"]) > 1)
             .parameter("ls3", labeltupletuples, lambda v: labeltupletuples.unfold_none(v["ls"]))
-            .parameter("ls1", labeltuples, lambda v: [v["ls3"][:1]])
-            .parameter("ls2", labeltupletuples, lambda v: [v["ls3"][1:]]) # TODO label dimension must match!!!
+            .parameter("ls1", labeltupletuples, lambda v: [v["ls3"][:1]])
+            .parameter("ls2", labeltupletuples, lambda v: [v["ls3"][1:]])
+            .parameter_constraint(lambda v: self.compute_dimension_of_tuple_tuple(v["ls1"]) == (v["i"], v["j"]) and
+                                            self.compute_dimension_of_tuple_tuple(v["ls2"]) == (v["j"], v["o"]))
             .argument("x", Constructor("DAG",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("j"))
@@ -172,17 +214,21 @@ class Labeled_DAG_Repository:
                                        & Constructor("structure", Var("ls2"))))
             .suffix(Constructor("DAG",
                                 Constructor("input", Var("i"))
+                                & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
-                                & Constructor("structure", Var("ls"))))
+                                & Constructor("output", Literal(None))
+                                & Constructor("structure", Var("ls")))),
+
+            # TODO: include swap
         }
 
 if __name__ == "__main__":
-    repo = Labeled_DAG_Repository(labels=['A', 'B', 'C'], dimensions=range(1,10))
+    repo = Labeled_DAG_Repository(labels=['A', 'B', 'C'], dimensions=range(1,5))
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
-    io_labels = repo.Para(['A', 'B', 'C'], range(1, 10))
-    #labeltuples = repo.ParaTuples(io_labels, 2)
-    #labeltupletuples = repo.ParaTupleTuples(labeltuples)
+    io_labels = repo.Para(['A', 'B', 'C'], range(1, 5))
+    labeltuples = repo.ParaTuples(io_labels, 3)
+    labeltupletuples = repo.ParaTupleTuples(labeltuples)
 
     #x = labeltuples.iter_len(1, [()])
 
@@ -195,11 +241,9 @@ if __name__ == "__main__":
     #for t in io_labels:
     #    print(t)
 
-    #for n in labeltuples.unfold_none((("A", 2, 3), ("B", None, 5), None)):
-    #    print(n)
-
-    #for n in labeltupletuples.unfold_none(((("A", 2, 3), ("B", None, 5)), (("C", 2, 3), None), None)):
-    #    print(n)
+    for n in labeltupletuples.unfold_none(((("A", 1, 2), ("B", 2, 1),), (("C", 3, 1),), None)):
+        print(n)
+        print(repo.compute_dimension_of_tuple_tuple(n))
 
 
     target0 = Constructor("DAG",
@@ -215,14 +259,30 @@ if __name__ == "__main__":
     target2 = Constructor("DAG",
                           Constructor("input", Literal(3))
                           & Constructor("output", Literal(3))
-                          & Constructor("structure", Literal(((("A", 1, 2), ("B", 2, 1),),))))
+                          & Constructor("structure", Literal(((("A", 1, 2), ("B", 2, 1)),))))
 
     target3 = Constructor("DAG",
                           Constructor("input", Literal(3))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(((("A", 1, 2), ("B", 2, 1),), (("C", 3, 1),),))))
 
-    target = target3
+    target4 = Constructor("DAG",
+                          Constructor("input", Literal(3))
+                          & Constructor("output", Literal(None))
+                          & Constructor("structure", Literal(((("C", None, None),),))))
+
+    target5 = Constructor("DAG",
+                          Constructor("input", Literal(None))
+                          & Constructor("output", Literal(3))
+                          & Constructor("structure", Literal(((("A", None, None), (None, 2, None)),))))
+
+    target6 = Constructor("DAG",
+                          Constructor("input", Literal(3))
+                          & Constructor("output", Literal(1))
+                          & Constructor("structure", Literal(((("A", 1, 2), ("B", 2, 1),), (("C", 3, 1),), None))))
+
+
+    target = target6
 
     print(target)
 
