@@ -155,10 +155,37 @@ class Labeled_DAG_Repository:
             #                    & Constructor("structure", Literal(((("swap", Literal(0), Literal(1)),),)))
             #                    & Constructor("structure", Literal(((None,),)))),
             # (m parallel) edges are swaps with n=0
+            "edges": SpecificationBuilder()
+            .parameter("io", dimension)
+            .parameter("para", para_labels, lambda v: [(("swap", 0, v["io"]), v["io"], v["io"]),
+                                                       (("swap", 0, None), v["io"], v["io"]),
+                                                       (("swap", None, v["io"]), v["io"], v["io"]),
+                                                       (("swap", None, None), v["io"], v["io"]),
+                                                       (("swap", 0, v["io"]), v["io"], None),
+                                                       (("swap", 0, None), v["io"], None),
+                                                       (("swap", None, v["io"]), v["io"], None),
+                                                       (("swap", None, None), v["io"], None),
+                                                       (("swap", 0, v["io"]), None, v["io"]),
+                                                       (("swap", 0, None), None, v["io"]),
+                                                       (("swap", None, v["io"]), None, v["io"]),
+                                                       (("swap", None, None), None, v["io"]),
+                                                       (("swap", 0, v["io"]), None, None),
+                                                       (("swap", 0, None), None, None),
+                                                       (("swap", None, v["io"]), None, None),
+                                                       (("swap", None, None), None, None), None])
+                                                        # (None, None, None)])
+            .suffix(Constructor("DAG_component", Constructor("input", Var("io"))
+                                & Constructor("input", Literal(None))
+                                & Constructor("output", Var("io"))
+                                & Constructor("output", Literal(None))
+                                & Constructor("structure", Var("para"))
+                                ) & Constructor("ID")
+                    ),
+
             "swap": SpecificationBuilder()
             .parameter("io", dimension)
-            .parameter("n", dimension_with_zero, lambda v: [d for d in range(0, v["io"])])
-            .parameter("m", dimension, lambda v: [v["io"] - v["n"]])
+            .parameter("n", dimension, lambda v: range(1, v["io"]))
+            .parameter("m", dimension, lambda v: [v["io"] - v["n"]]) # m > 0
             .parameter("para", para_labels, lambda v: [(("swap", v["n"], v["m"]), v["io"], v["io"]),
                                                        (("swap", v["n"], None), v["io"], v["io"]),
                                                        (("swap", None, v["m"]), v["io"], v["io"]),
@@ -176,47 +203,12 @@ class Labeled_DAG_Repository:
                                                        (("swap", None, v["m"]), None, None),
                                                        (("swap", None, None), None, None), None])
                                                        #(None, None, None)])
-            .suffix(Constructor("DAG", Constructor("input", Var("io"))
+            .suffix(Constructor("DAG_component", Constructor("input", Var("io"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("io"))
                                 & Constructor("output", Literal(None))
-                                #& Constructor("structure",
-                                #              Literal((("swap", Var("n"), Var("n")), Var("io"), Var("io"))))
-                                #& Constructor("structure",
-                                #              Literal((("swap", Var("n"), Literal(None)), Var("io"), Var("io"))))
-                                #& Constructor("structure",
-                                #              Literal((("swap",Literal(None), Var("n")), Var("io"), Var("io"))))
-                                #& Constructor("structure",
-                                #              Literal((("swap", Literal(None), Literal(None)), Var("io"), Var("io"))))
-                                #& Constructor("structure",
-                                #              Literal((("swap", Var("n"), Var("n")), Var("io"), Literal(None))))
-                                #& Constructor("structure",
-                                #              Literal((("swap", Var("n"), Literal(None)), Var("io"), Literal(None))))
-                                #& Constructor("structure",
-                                #              Literal((("swap", Literal(None), Var("n")), Var("io"), Literal(None))))
-                                #& Constructor("structure",
-                                #              Literal((("swap", Literal(None), Literal(None)), Var("io"), Literal(None))))
-                                #& Constructor("structure",
-                                #              Literal((("swap", Var("n"), Var("n")), Literal(None), Var("io"))))
-                                #& Constructor("structure",
-                                #              Literal((("swap", Var("n"), Literal(None)), Literal(None), Var("io"))))
-                                #& Constructor("structure",
-                                #              Literal((("swap", Literal(None), Var("n")), Literal(None), Var("io"))))
-                                #& Constructor("structure",
-                                #              Literal((("swap", Literal(None), Literal(None)), Literal(None), Var("io"))))
-                                #& Constructor("structure",
-                                #              Literal((("swap", Var("n"), Var("n")), Literal(None), Literal(None))))
-                                #& Constructor("structure",
-                                #              Literal((("swap", Var("n"), Literal(None)), Literal(None), Literal(None))))
-                                #& Constructor("structure",
-                                #              Literal((("swap", Literal(None), Var("n")), Literal(None), Literal(None))))
-                                #& Constructor("structure",
-                                #              Literal((("swap", Literal(None), Literal(None)), Literal(None), Literal(None))))
-                                #& Constructor("structure",
-                                #              Literal((Literal(None), Literal(None), Literal(None))))
                                 & Constructor("structure", Var("para"))
-                                #& Constructor("structure", Literal(None))
-                                )
+                                ) & Constructor("non_ID")
                     ),
             "node": SpecificationBuilder()
             .parameter("l", labels)
@@ -230,22 +222,14 @@ class Labeled_DAG_Repository:
                                                        (None, None, v["o"]),
                                                        (None, v["i"], None), None])
                                                        #(None, None, None)])
-            .suffix(Constructor("DAG",
+            .suffix(Constructor("DAG_component",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
-                               # & Constructor("structure", Literal((Var("l"), Var("i"), Var("o"))))
-                                #& Constructor("structure", Literal((Var("l"), Var("i"), Literal(None))))
-                                #& Constructor("structure", Literal((Var("l"), Literal(None), Var("o"))))
-                                #& Constructor("structure", Literal((Var("l"), Literal(None), Literal(None))))
-                                #& Constructor("structure", Literal((Literal(None), Var("i"), Var("o"))))
-                                #& Constructor("structure", Literal((Literal(None), Var("i"), Literal(None))))
-                                #& Constructor("structure", Literal((Literal(None), Literal(None), Var("o"))))
-                                #& Constructor("structure", Literal((Literal(None), Literal(None), Literal(None))))
-                                & Constructor("structure", Var("para")) # TODO: ask Andrej, why I have to introduce para and not do the comment above
-                                #& Constructor("structure", Literal(None))
-                                )),
+                                & Constructor("structure", Var("para"))
+                                ) & Constructor("non_ID")
+                    ),
 
             "beside_singleton": SpecificationBuilder()
             .parameter("i", dimension)
@@ -256,18 +240,39 @@ class Labeled_DAG_Repository:
             .parameter_constraint(lambda v: v["para"] is None or (len(v["para"]) == 3 and
                                             (v["para"][1] == v["i"] or v["para"][1] is None) and
                                             (v["para"][2] == v["o"] or v["para"][2] is None)))
-            .argument("x", Constructor("DAG",
+            .suffix(((Constructor("DAG_component",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("o"))
-                                       & Constructor("structure", Var("para"))))
-            .suffix(Constructor("DAG",
+                                       & Constructor("structure", Var("para")))
+                     & Constructor("non_ID"))
+                    **
+                    (Constructor("DAG_parallel",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("ls"))
                                 #& Constructor("structure", Literal(None))
-                                )),
+                                )
+                     & Constructor("non_ID")))
+                    &
+                    ((Constructor("DAG_component",
+                                       Constructor("input", Var("i"))
+                                       & Constructor("output", Var("o"))
+                                       & Constructor("structure", Var("para")))
+                     & Constructor("ID")
+                     ) **
+                    (Constructor("DAG_parallel",
+                                Constructor("input", Var("i"))
+                                & Constructor("input", Literal(None))
+                                & Constructor("output", Var("o"))
+                                & Constructor("output", Literal(None))
+                                & Constructor("structure", Var("ls"))
+                                #& Constructor("structure", Literal(None))
+                                )
+                     & Constructor("ID")
+                     ))
+                    ),
 
             "beside_cons": SpecificationBuilder()
             .parameter("i", dimension)
@@ -283,22 +288,99 @@ class Labeled_DAG_Repository:
                                                                   (v["head"][1] == v["i1"] or v["head"][1] is None) and
                                                                   (v["head"][2] == v["o1"] or v["head"][2] is None)))
             .parameter("tail", paratuples, lambda v: [v["ls"][1:]])
-            .argument("x", Constructor("DAG",
+            .suffix((
+                    (Constructor("DAG_component",
                                        Constructor("input", Var("i1"))
                                        & Constructor("output", Var("o1"))
-                                       & Constructor("structure", Var("head"))))
-            .argument("y", Constructor("DAG",
+                                       & Constructor("structure", Var("head")))
+                     & Constructor("ID"))
+                    **
+                    (Constructor("DAG_parallel",
                                        Constructor("input", Var("i2"))
                                        & Constructor("output", Var("o2"))
-                                       & Constructor("structure", Var("tail"))))
-            .suffix(Constructor("DAG",
+                                       & Constructor("structure", Var("tail")))
+                     & Constructor("ID"))
+                     **
+                     (Constructor("DAG_parallel",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("ls"))
                                 #& Constructor("structure", Literal(None))
-                                )),
+                                )
+                      & Constructor("ID"))
+                     )
+                    &
+                    ((Constructor("DAG_component",
+                                       Constructor("input", Var("i1"))
+                                       & Constructor("output", Var("o1"))
+                                       & Constructor("structure", Var("head")))
+                      & Constructor("ID"))
+                    **
+                    (Constructor("DAG_parallel",
+                                       Constructor("input", Var("i2"))
+                                       & Constructor("output", Var("o2"))
+                                       & Constructor("structure", Var("tail")))
+                     & Constructor("non_ID"))
+                     **
+                     (Constructor("DAG_parallel",
+                                Constructor("input", Var("i"))
+                                & Constructor("input", Literal(None))
+                                & Constructor("output", Var("o"))
+                                & Constructor("output", Literal(None))
+                                & Constructor("structure", Var("ls"))
+                                #& Constructor("structure", Literal(None))
+                                )
+                      & Constructor("non_ID"))
+                     )
+                    &
+                    ((Constructor("DAG_component",
+                                  Constructor("input", Var("i1"))
+                                  & Constructor("output", Var("o1"))
+                                  & Constructor("structure", Var("head")))
+                      & Constructor("non_ID"))
+                     **
+                     (Constructor("DAG_parallel",
+                                  Constructor("input", Var("i2"))
+                                  & Constructor("output", Var("o2"))
+                                  & Constructor("structure", Var("tail")))
+                      & Constructor("ID"))
+                     **
+                     (Constructor("DAG_parallel",
+                                  Constructor("input", Var("i"))
+                                  & Constructor("input", Literal(None))
+                                  & Constructor("output", Var("o"))
+                                  & Constructor("output", Literal(None))
+                                  & Constructor("structure", Var("ls"))
+                                  # & Constructor("structure", Literal(None))
+                                  )
+                      & Constructor("non_ID"))
+                     )
+                    &
+                    ((Constructor("DAG_component",
+                                  Constructor("input", Var("i1"))
+                                  & Constructor("output", Var("o1"))
+                                  & Constructor("structure", Var("head")))
+                      & Constructor("non_ID"))
+                     **
+                     (Constructor("DAG_parallel",
+                                  Constructor("input", Var("i2"))
+                                  & Constructor("output", Var("o2"))
+                                  & Constructor("structure", Var("tail")))
+                      & Constructor("non_ID"))
+                     **
+                     (Constructor("DAG_parallel",
+                                  Constructor("input", Var("i"))
+                                  & Constructor("input", Literal(None))
+                                  & Constructor("output", Var("o"))
+                                  & Constructor("output", Literal(None))
+                                  & Constructor("structure", Var("ls"))
+                                  # & Constructor("structure", Literal(None))
+                                  )
+                      & Constructor("non_ID"))
+                     )
+                    ),
 
             "before_singleton": SpecificationBuilder()
             .parameter("i", dimension)
@@ -311,10 +393,10 @@ class Labeled_DAG_Repository:
                                               else v["i"] < sum([t[1] for t in v["ls1"] if t[1] is not None]))
                                              and (v["o"] == sum([t[2] for t in v["ls1"]]) if None not in [t[2] for t in v["ls1"]]
                                                   else v["o"] < sum([t[2] for t in v["ls1"] if t[2] is not None]))))
-            .argument("x", Constructor("DAG",
+            .argument("x", Constructor("DAG_parallel",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("o"))
-                                       & Constructor("structure", Var("ls1"))))
+                                       & Constructor("structure", Var("ls1"))) & Constructor("non_ID"))
             .suffix(Constructor("DAG",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
@@ -342,10 +424,10 @@ class Labeled_DAG_Repository:
                                               else v["j"] < sum([t[1] for t in v["tail"][0] if t[1] is not None])) and
                                              (v["o"] == sum([t[2] for t in v["tail"][-1]]) if None not in [t[2] for t in v["tail"][-1]]
                                               else v["o"] < sum([t[2] for t in v["tail"][-1] if t[2] is not None]))))
-            .argument("x", Constructor("DAG",
+            .argument("x", Constructor("DAG_parallel",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("j"))
-                                       & Constructor("structure", Var("head"))))
+                                       & Constructor("structure", Var("head"))) & Constructor("non_ID"))
             .argument("y", Constructor("DAG",
                                        Constructor("input", Var("j"))
                                        & Constructor("output", Var("o"))
@@ -359,129 +441,176 @@ class Labeled_DAG_Repository:
         }
 
 if __name__ == "__main__":
-    repo = Labeled_DAG_Repository(labels=["A", "B", "C"], dimensions=range(1,5))
+    repo = Labeled_DAG_Repository(labels=["A", "B"], dimensions=range(1,4))
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
 
-    target0 = Constructor("DAG",
+    target0 = Constructor("DAG_component",
                           Constructor("input", Literal(1))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(None)))
 
-    target1 = Constructor("DAG",
+    target1 = Constructor("DAG_component",
                           Constructor("input", Literal(3))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(None)))
 
-    target2 = Constructor("DAG",
+    target2 = Constructor("DAG_component",
                           Constructor("input", Literal(None))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(None)))
 
-    target3 = Constructor("DAG",
+    target3 = Constructor("DAG_component",
                           Constructor("input", Literal(3))
                           & Constructor("output", Literal(None))
                           & Constructor("structure", Literal(None)))
 
-    target4 = Constructor("DAG",
+    target4 = Constructor("DAG_component",
                           Constructor("input", Literal(None))
                           & Constructor("output", Literal(None))
                           & Constructor("structure", Literal(None)))
 
-    target5 = Constructor("DAG",
+    target5 = Constructor("DAG_component",
                           Constructor("input", Literal(3))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(("A", 3, 1))))
 
-    target6 = Constructor("DAG",
+    target6 = Constructor("DAG_component",
                           Constructor("input", Literal(3))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(("A", 3, None))))
 
-    target7 = Constructor("DAG",
+    target7 = Constructor("DAG_component",
                           Constructor("input", Literal(3))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(("A", None, 1))))
 
-    target8 = Constructor("DAG",
+    target8 = Constructor("DAG_component",
                           Constructor("input", Literal(3))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal((None, 3, 1))))
 
-    target9 = Constructor("DAG",
+    target9 = Constructor("DAG_component",
                           Constructor("input", Literal(3))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(("A", None, None))))
 
-    target10 = Constructor("DAG",
+    target10 = Constructor("DAG_component",
                           Constructor("input", Literal(3))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal((None, None, 1))))
 
-    target11 = Constructor("DAG",
+    target11 = Constructor("DAG_component",
                           Constructor("input", Literal(None))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(("A", 3, 1))))
 
-    target12 = Constructor("DAG",
+    target12 = Constructor("DAG_component",
                           Constructor("input", Literal(None))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(("A", None, 1))))
 
-    target13 = Constructor("DAG",
+    target13 = Constructor("DAG_component",
                            Constructor("input", Literal(None))
                            & Constructor("output", Literal(1))
                            & Constructor("structure", Literal(("A", None, None))))
 
-    target14 = Constructor("DAG",
+    target14 = Constructor("DAG_component",
                            Constructor("input", Literal(None))
                            & Constructor("output", Literal(1))
                            & Constructor("structure", Literal((None, 3, None))))
 
-    target15 = Constructor("DAG",
+    target15 = Constructor("DAG_component",
                           Constructor("input", Literal(None))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal(("A", None, 1))))
 
-    target16 = Constructor("DAG",
+    target16 = Constructor("DAG_component",
                           Constructor("input", Literal(None))
                           & Constructor("output", Literal(1))
                           & Constructor("structure", Literal((None, None, 1))))
 
-    target17 = Constructor("DAG",
+    target17 = Constructor("DAG_component",
                           Constructor("input", Literal(3))
                           & Constructor("output", Literal(None))
                           & Constructor("structure", Literal(("A", 3, 1))))
 
-    target18 = Constructor("DAG",
+    target18 = Constructor("DAG_component",
                            Constructor("input", Literal(3))
                            & Constructor("output", Literal(None))
                            & Constructor("structure", Literal(("A", 3, None))))
 
-    target19 = Constructor("DAG",
+    target19 = Constructor("DAG_component",
                           Constructor("input", Literal(None))
                           & Constructor("output", Literal(None))
                           & Constructor("structure", Literal(("A", 3, 1))))
 
-    target20 = Constructor("DAG",
+    target20 = Constructor("DAG_component",
                            Constructor("input", Literal(None))
                            & Constructor("output", Literal(None))
                            & Constructor("structure", Literal(("A", None, None))))
 
-    target21 = Constructor("DAG",
+    target21 = Constructor("DAG_component",
                           Constructor("input", Literal(3))
                           & Constructor("output", Literal(3))
                           & Constructor("structure", Literal((("swap",0, 3), 3, 3))))
 
-    target22 = Constructor("DAG",
+    target22 = Constructor("DAG_component",
                            Constructor("input", Literal(3))
                            & Constructor("output", Literal(3))
                            & Constructor("structure", Literal((("swap", 2, 1), 3, 3))))
 
+    target23 = Constructor("DAG_component",
+                           Constructor("input", Literal(3))
+                           & Constructor("output", Literal(3))
+                           & Constructor("structure", Literal((("swap", 2, None), 3, 3))))
 
+    target24 = Constructor("DAG_component",
+                           Constructor("input", Literal(3))
+                           & Constructor("output", Literal(3))
+                           & Constructor("structure", Literal((("swap", None, 1), 3, 3))))
 
+    target25 = Constructor("DAG_component",
+                           Constructor("input", Literal(3))
+                           & Constructor("output", Literal(3))
+                           & Constructor("structure", Literal((("swap", None, None), 3, 3))))
 
-    target = target0
+    target26 = Constructor("DAG_component",
+                           Constructor("input", Literal(None))
+                           & Constructor("output", Literal(None))
+                           & Constructor("structure", Literal((("swap", None, None), 3, 3))))
+
+    target27 = Constructor("DAG_component",
+                           Constructor("input", Literal(None))
+                           & Constructor("output", Literal(None))
+                           & Constructor("structure", Literal((("swap", None, None), None, None))))
+
+    target28 = Constructor("DAG_parallel",
+                           Constructor("input", Literal(2))
+                           & Constructor("output", Literal(2))
+                           & Constructor("structure", Literal((("B", 1, 1), ("A", 1, 1)))))
+
+    target29 = Constructor("DAG_parallel",
+                           Constructor("input", Literal(2))
+                           & Constructor("output", Literal(2))
+                           & Constructor("structure", Literal(((("swap", 0, 1), 1, 1), ("A", 1, 1)))))
+
+    target30 = Constructor("DAG",
+                           Constructor("input", Literal(2))
+                           & Constructor("output", Literal(2))
+                           & Constructor("structure", Literal(((("B", 1, 1), ("A", 1, 1)),))))
+
+    target31 = Constructor("DAG",
+                           Constructor("input", Literal(2))
+                           & Constructor("output", Literal(2))
+                           & Constructor("structure", Literal(((("B", 1, 1), ("A", 1, 1)),((("swap", 0, 1), 1, 1), ("A", 1, 1)),))))
+
+    targets = [target0, target1, target2, target3, target4, target5, target6, target7,
+               target8, target9, target10, target11, target12, target13, target14,
+               target15, target16, target17, target18, target19, target20, target21,
+               target22, target23, target24, target25, target26, target27, target28, target29, target30, target31]
+
+    target = target31
 
     print(target)
 
@@ -494,3 +623,16 @@ if __name__ == "__main__":
 
     for t in terms:
         print(t)
+
+    rs = []
+    for t in targets:
+        print("Searching for target:")
+        print(t)
+        search_space = synthesizer.construct_search_space(t)
+        terms = search_space.enumerate_trees(t, 2)
+        terms = list(terms)
+        n = len(terms)
+        print(f"Found {n} terms.")
+        rs.append(n > 0)
+
+    print(all(rs))
