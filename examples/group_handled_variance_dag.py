@@ -134,11 +134,61 @@ class Labeled_DAG_Repository:
 
 
     def specification(self):
-        labels = DataGroup("labels", self.labels)
+        labels = DataGroup("para", self.labels)
         io_labels = self.Para(self.labels, self.dimensions)
         labeltuples = self.ParaTuples(io_labels)
         labeltupletuples = self.ParaTupleTuples(labeltuples)
         dimension = DataGroup("dimension", self.dimensions)
+
+        """
+        The terms have to be in normal form under the following term rewriting system:
+        
+        associativity laws:
+        
+        beside(beside(x,y),z)
+        ->
+        beside(x, beside(y,z))
+
+        before(before(x,y),z)
+        ->
+        before(x, before(y,z))
+        
+        abiding law:
+
+        beside(before(m,n,p, w(m,n), x(n,p)), before(m',r,p', y(m',r), z(r,p')))
+        ->
+        before(m+m', n+r, p+p', beside(w(m,n),y(m',r)), beside(x(n,p),z(r,p')))
+        
+        neutrality of edge:
+        
+        before(edge(), x)
+        ->
+        x
+
+        before(x, edge())
+        ->
+        x
+        
+        swap laws:
+        
+        before(besides(swap(m+n, m, n), copy(p,edge())), besides(copy(n, edge()), swap(m+p, m, p)))
+        ->
+        swap(m + n + p, m, n+p)
+
+        before(swap(m+n, m, n), before(beside(x(n,p), y(m,q)), swap(p+q, p, q)))
+        ->
+        beside(y(m,q),x(n,p))
+
+        before(swap(m+n, m, n), swap(n+m, n, m))
+        ->
+        copy(m+n, edge())
+
+        before(besides(copy(m, edge()), swap(n+p, n, p)), besides(swap(m+p, m, p), copy(n,edge())))
+        ->
+        swap(m + n + p, m+n, p)
+
+        """
+
         return {
             "edge": Constructor("DAG", Constructor("input", Literal(1))
                                 & Constructor("input", Literal(None))
@@ -218,7 +268,6 @@ class Labeled_DAG_Repository:
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("ls")))),
-
             # TODO: include swap
         }
 
