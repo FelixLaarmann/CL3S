@@ -1,6 +1,8 @@
 
 from src.cl3s import SpecificationBuilder, Constructor, Literal, Var, SearchSpaceSynthesizer, DerivationTree, DataGroup, Group
 
+from typing import Any
+
 class Labeled_DAG_Repository:
     def __init__(self, labels, dimensions):
         # additionally to labeled nodes, we have (unlabelled) edges, that needs to be handled additionally
@@ -18,13 +20,14 @@ class Labeled_DAG_Repository:
 
         def __iter__(self):
             for l in self.labels:
-                #if l is not None:
+                if l is not None:
                     for i in self.dimensions:
-                        #if i is not None:
+                        if i is not None:
                             for o in self.dimensions:
-                                #if o is not None:
+                                if o is not None:
                                     yield l, i, o
-                                    if i is not None and o is not None and i == o:
+                                    if i == o:
+                                    #if i is not None and o is not None and i == o:
                                         for n in range (0, i):
                                             m = i - n
                                             assert m > 0
@@ -75,6 +78,60 @@ class Labeled_DAG_Repository:
             return value is None or (isinstance(value, tuple) and all(True if v is None else v in self.para_tuples for v in value))
 
 
+    def swaplaw1(self, head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
+        """
+        before(swap(m+n, m, n), before(beside(x(n,p), y(m,q)), swap(p+q, p, q)))
+        ->
+        beside(y(m,q),x(n,p))
+
+        forbid the pattern on the left-hand side of the rewrite rule by returning False if it is matched
+
+        :param t:
+        :return:
+        """
+
+        left = head.root
+        right = tail.root
+
+        if "beside_singleton" in left and "before_cons" in right:
+            if len(head.children) != 5 or len(tail.children) != 8:
+                raise ValueError("Derivation trees have not the expected shape.")
+            left_term = head.children[4]
+            right_head = tail.children[6]
+            right_tail = tail.children[7]
+
+            left = left_term.root
+            right_head_root = right_head.root
+            right_tail_root = right_tail.root
+            if left == "swap" and "beside_cons" in right_head_root and "before_singleton" in right_tail_root:
+                # further checks needed
+                if len(left_term.children) != 4 or len(right_head.children) != 11 or len(right_tail.children) != 5:
+                    raise ValueError("Derivation trees have not the expected shape.")
+                m = left_term.children[1]
+                n = left_term.children[2]
+                x_n = right_head.children[1]
+                x_p = right_head.children[4]
+                right_head_tail = right_head.children[10]
+                right_tail_term = right_tail.children[4]
+                right_head_tail_root = right_head_tail.root
+                right_tail_term_root = right_tail_term.root
+                if "beside_singleton" in right_head_tail_root and "beside_singleton" in right_tail_term_root:
+                    if len(right_head_tail.children) != 5 or len(right_tail_term.children) != 5:
+                        raise ValueError("Derivation trees have not the expected shape.")
+                    y_m = right_head_tail.children[0]
+                    y_q = right_head_tail.children[1]
+                    right_swap = right_tail_term.children[4]
+                    right_swap_root = right_swap.root
+                    if right_swap_root == "swap":
+                        if len(right_swap.children) != 4:
+                            raise ValueError("Derivation trees have not the expected shape.")
+                        p = right_swap.children[1]
+                        q = right_swap.children[2]
+                        if m == y_m and n == x_n and p == x_p and q == y_q:
+                            return False
+        return True  # placeholder implementation
+
+
     def specification(self):
         labels = DataGroup("para", self.labels)
         para_labels = self.Para(self.labels, self.dimensions)
@@ -86,7 +143,7 @@ class Labeled_DAG_Repository:
         """
         The terms have to be in normal form under the following term rewriting system:
         
-        associativity laws:
+        associativity laws:  (handled with types)
         
         beside(beside(x,y),z)
         ->
@@ -96,13 +153,13 @@ class Labeled_DAG_Repository:
         ->
         before(x, before(y,z))
         
-        abiding law:
+        abiding law:   (handled with types)
 
         beside(before(m,n,p, w(m,n), x(n,p)), before(m',r,p', y(m',r), z(r,p')))
         ->
         before(m+m', n+r, p+p', beside(w(m,n),y(m',r)), beside(x(n,p),z(r,p')))
         
-        neutrality of edge:
+        neutrality of edge:   (handled with types)
         
         before(edge(), x)
         ->
@@ -112,15 +169,20 @@ class Labeled_DAG_Repository:
         ->
         x
         
-        swap laws:
+        swap laws:    (they need to be term predicates :-(...)
         
-        before(besides(swap(m+n, m, n), copy(p,edge())), besides(copy(n, edge()), swap(m+p, m, p)))
-        ->
-        swap(m + n + p, m, n+p)
 
         before(swap(m+n, m, n), before(beside(x(n,p), y(m,q)), swap(p+q, p, q)))
         ->
         beside(y(m,q),x(n,p))
+        
+        
+        (the three laws below may be handled with types, but only if the contains-bug is solved!)
+        (one could introduce a "only edges" flag, like ID and non_ID, but that would also require a lot of thinking...)
+        
+        before(besides(swap(m+n, m, n), copy(p,edge())), besides(copy(n, edge()), swap(m+p, m, p)))
+        ->
+        swap(m + n + p, m, n+p)
 
         before(swap(m+n, m, n), swap(n+m, n, m))
         ->
@@ -221,32 +283,17 @@ class Labeled_DAG_Repository:
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
-            '''
+            #'''
             "beside_singleton": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("o", dimension)
             .parameter("ls", paratuples)
             .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) == 1)
             .parameter("para", para_labels, lambda v: [v["ls"][0]]) # [l for l in para_labels if l[1] == v["i"] and l[2] == v["o"]] if v["ls"][0] is None else [v["ls"][0]])
-            #.parameter_constraint(lambda v: (len(v["para"]) == 3 and
-            #                                (v["para"][1] == v["i"] if v["para"][1] is not None else True) and
-            #                                (v["para"][2] == v["o"] if v["para"][2] is not None else True)
-            #                                 ) if v["para"] is not None else True)
-            #.parameter_constraint(lambda v: True if print(v["para"]) else True)
-            #.argument("x",Constructor("DAG_component",
-            #                           Constructor("input", Var("i"))
-            #                           & Constructor("output", Var("o"))
-            #                           & Constructor("structure", Var("para")))
-            #         & Constructor("non_ID"))
-            #.suffix(Constructor("DAG_parallel",
-            #                    Constructor("input", Var("i"))
-            #                    & Constructor("input", Literal(None))
-            #                    & Constructor("output", Var("o"))
-            #                    & Constructor("output", Literal(None))
-            #                    & Constructor("structure", Var("ls"))
-            #                    & Constructor("structure", Literal(None))
-            #                    )
-            #      & Constructor("non_ID")),
+            .parameter_constraint(lambda v: (len(v["para"]) == 3 and
+                                             (v["para"][1] == v["i"] if v["para"][1] is not None else True) and
+                                             (v["para"][2] == v["o"] if v["para"][2] is not None else True)
+                                             ) if v["para"] is not None else True)
             .suffix(
                 ((Constructor("DAG_component",
                                        Constructor("input", Var("i"))
@@ -285,8 +332,8 @@ class Labeled_DAG_Repository:
                      & Constructor("ID")
                      )
                  )),
-                 ''' : Constructor("comment"),
-
+                 #''' : Constructor("comment"),
+            '''
             "beside_singleton_1": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("o", dimension)
@@ -341,8 +388,9 @@ class Labeled_DAG_Repository:
                                 & Constructor("structure", Literal(None))
                                 )
                   & Constructor("non_ID")),
+                  ''': Constructor("comment"),
 
-            '''
+            #'''
             "beside_cons": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("i1", dimension)
@@ -353,9 +401,9 @@ class Labeled_DAG_Repository:
             .parameter("ls", paratuples)
             .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) > 1)
             .parameter("head", para_labels, lambda v: [v["ls"][0]])
-            #.parameter_constraint(lambda v: v["head"] is None or (len(v["head"]) == 3 and
-            #                                                      (v["head"][1] == v["i1"] or v["head"][1] is None) and
-            #                                                      (v["head"][2] == v["o1"] or v["head"][2] is None)))
+            .parameter_constraint(lambda v: v["head"] is None or (len(v["head"]) == 3 and
+                                                                  (v["head"][1] == v["i1"] or v["head"][1] is None) and
+                                                                  (v["head"][2] == v["o1"] or v["head"][2] is None)))
             .parameter("tail", paratuples, lambda v: [v["ls"][1:]])
             .suffix((
                     (Constructor("DAG_component",
@@ -450,8 +498,8 @@ class Labeled_DAG_Repository:
                       & Constructor("non_ID"))
                      )
                     ),
-                    ''': Constructor("comment"),
-
+                    #''': Constructor("comment"),
+            '''
             "beside_cons_1": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("i1", dimension)
@@ -587,6 +635,7 @@ class Labeled_DAG_Repository:
                                 & Constructor("structure", Literal(None))
                                 )
                     & Constructor("non_ID")),
+                    ''': Constructor("comment"),
 
             "before_singleton": SpecificationBuilder()
             .parameter("i", dimension)
@@ -963,8 +1012,35 @@ if __name__ == "__main__":
                target32, target33, target34, target35, target36, target37, target38,
                target39, target40, target41, target42]
 
+
+    # TODO: targets to test for normal forms
+    # TODO: normalization procedure for structure literals
+
+    """
+    test swaplaw1 - predicate:
+    terms of structure
+    before(swap(m+n, m, n), before(beside(x(n,p), y(m,q)), swap(p+q, p, q)))
+    should be False, everything else True
+    """
+    def target43(m, n, p, q):
+        return Constructor("DAG",
+                           Constructor("input", Literal(m + n))
+                           & Constructor("output", Literal(p + q))
+                           & Constructor("structure", Literal(
+                               (((("swap", m, n), m+n, m+n),), (("A", n, p), ("B", m, q)),
+                                ((("swap", p, q), p+q, p+q),))
+                           )))
+
+    target44 = Constructor("DAG",
+                           Constructor("input", Literal(None))
+                           & Constructor("output", Literal(None))
+                           & Constructor("structure", Literal(
+                               (((("swap", None, None), None, None),), (("A", None, None), ("B", None, None)),
+                                ((("swap", None, None), None, None),))
+                           )))
+
     #"""
-    target = target42
+    target = target44
 
     print(target)
 
@@ -977,7 +1053,8 @@ if __name__ == "__main__":
 
     for t in terms:
         print(t)
-    #"""
+        print(repo.swaplaw1(t.children[6], t.children[7]))
+   # """
 """
     rs = []
     for t in targets:
