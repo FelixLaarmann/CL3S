@@ -18,25 +18,26 @@ class Labeled_DAG_Repository:
 
         def __iter__(self):
             for l in self.labels:
-                if l is not None:
+                #if l is not None:
                     for i in self.dimensions:
-                        if i is not None:
+                        #if i is not None:
                             for o in self.dimensions:
-                                if o is not None:
+                                #if o is not None:
                                     yield l, i, o
-                                    if i == o:
+                                    if i is not None and o is not None and i == o:
                                         for n in range (0, i):
                                             m = i - n
                                             assert m > 0
                                             yield ("swap", n, m), i, o
+            yield None
 
 
         def __contains__(self, value):
-            return ((isinstance(value, tuple) and len(value) == 3 and (value[0] in self.labels or
+            return value is None or ((isinstance(value, tuple) and len(value) == 3 and (value[0] in self.labels or
                                                                       (value[0][0] == "swap" and
                                                                        (value[0][1] in self.dimensions or value[0][1] == 0) and
                                                                        value[0][2] in self.dimensions))
-                    and value[1] in self.dimensions and value[2] in self.dimensions)) or value is None
+                    and value[1] in self.dimensions and value[2] in self.dimensions))
 
     class ParaTuples(Group):
         name = "ParaTuples"
@@ -59,7 +60,7 @@ class Labeled_DAG_Repository:
             yield from result
 
         def __contains__(self, value):
-            return (isinstance(value, tuple) and all(True if v is None else v in self.para for v in value)) or value is None
+            return value is None or (isinstance(value, tuple) and all(True if v is None else v in self.para for v in value))
 
     class ParaTupleTuples(Group):
         name = "ParaTupleTuples"
@@ -71,20 +72,7 @@ class Labeled_DAG_Repository:
             return super().__iter__()
 
         def __contains__(self, value):
-            return (isinstance(value, tuple) and all(True if v is None else v in self.para_tuples for v in value)) or value is None
-
-    @staticmethod
-    def compute_dimension_of_tuple(para_tuple):
-        input_dim = sum(t[1] for t in para_tuple)
-        output_dim = sum(t[2] for t in para_tuple)
-        return input_dim, output_dim
-
-    @staticmethod
-    def compute_dimension_of_tuple_tuple(para_tuple_tuple):
-        input_dim = sum(t[1] for t in para_tuple_tuple[0])
-        output_dim = sum(t[2] for t in para_tuple_tuple[-1])
-        return input_dim, output_dim
-
+            return value is None or (isinstance(value, tuple) and all(True if v is None else v in self.para_tuples for v in value))
 
 
     def specification(self):
@@ -93,7 +81,7 @@ class Labeled_DAG_Repository:
         paratuples = self.ParaTuples(para_labels, max_length=max(self.dimensions))
         paratupletuples = self.ParaTupleTuples(paratuples)
         dimension = DataGroup("dimension", self.dimensions)
-        dimension_with_zero = DataGroup("dimension_with_zero", list(self.dimensions) + [0])
+        #dimension_with_zero = DataGroup("dimension_with_zero", list(self.dimensions) + [0])
 
         """
         The terms have to be in normal form under the following term rewriting system:
@@ -179,6 +167,7 @@ class Labeled_DAG_Repository:
                                 & Constructor("output", Var("io"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("para"))
+                                & Constructor("structure", Literal(None))
                                 ) & Constructor("ID")
                     ),
 
@@ -208,6 +197,7 @@ class Labeled_DAG_Repository:
                                 & Constructor("output", Var("io"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("para"))
+                                & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
             "node": SpecificationBuilder()
@@ -228,6 +218,7 @@ class Labeled_DAG_Repository:
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("para"))
+                                & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
 
@@ -236,43 +227,64 @@ class Labeled_DAG_Repository:
             .parameter("o", dimension)
             .parameter("ls", paratuples)
             .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) == 1)
-            .parameter("para", para_labels, lambda v: [v["ls"][0]])
-            .parameter_constraint(lambda v: v["para"] is None or (len(v["para"]) == 3 and
-                                            (v["para"][1] == v["i"] or v["para"][1] is None) and
-                                            (v["para"][2] == v["o"] or v["para"][2] is None)))
-            .suffix(((Constructor("DAG_component",
+            .parameter("para", para_labels, lambda v: [v["ls"][0]]) # [l for l in para_labels if l[1] == v["i"] and l[2] == v["o"]] if v["ls"][0] is None else [v["ls"][0]])
+            #.parameter_constraint(lambda v: (len(v["para"]) == 3 and
+            #                                (v["para"][1] == v["i"] if v["para"][1] is not None else True) and
+            #                                (v["para"][2] == v["o"] if v["para"][2] is not None else True)
+            #                                 ) if v["para"] is not None else True)
+            #.parameter_constraint(lambda v: True if print(v["para"]) else True)
+            #.argument("x",Constructor("DAG_component",
+            #                           Constructor("input", Var("i"))
+            #                           & Constructor("output", Var("o"))
+            #                           & Constructor("structure", Var("para")))
+            #         & Constructor("non_ID"))
+            #.suffix(Constructor("DAG_parallel",
+            #                    Constructor("input", Var("i"))
+            #                    & Constructor("input", Literal(None))
+            #                    & Constructor("output", Var("o"))
+            #                    & Constructor("output", Literal(None))
+            #                    & Constructor("structure", Var("ls"))
+            #                    & Constructor("structure", Literal(None))
+            #                    )
+            #      & Constructor("non_ID")),
+            .suffix(
+                ((Constructor("DAG_component",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("o"))
                                        & Constructor("structure", Var("para")))
-                     & Constructor("non_ID"))
-                    **
-                    (Constructor("DAG_parallel",
+                     & Constructor("non_ID")
+                  )
+                 **
+                 (Constructor("DAG_parallel",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("ls"))
-                                #& Constructor("structure", Literal(None))
+                                & Constructor("structure", Literal(None))
                                 )
-                     & Constructor("non_ID")))
-                    &
-                    ((Constructor("DAG_component",
+                  & Constructor("non_ID")
+                  )
+                 )
+                &
+                ((Constructor("DAG_component",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("o"))
                                        & Constructor("structure", Var("para")))
                      & Constructor("ID")
-                     ) **
-                    (Constructor("DAG_parallel",
+                     )
+                 **
+                 (Constructor("DAG_parallel",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("ls"))
-                                #& Constructor("structure", Literal(None))
+                                & Constructor("structure", Literal(None))
                                 )
                      & Constructor("ID")
-                     ))
-                    ),
+                     )
+                 )),
 
             "beside_cons": SpecificationBuilder()
             .parameter("i", dimension)
@@ -282,11 +294,11 @@ class Labeled_DAG_Repository:
             .parameter("o1", dimension)
             .parameter("o2", dimension, lambda v: [v["o"] - v["o1"]])
             .parameter("ls", paratuples)
-            .parameter_constraint(lambda v: v["ls"] is not None and  len(v["ls"]) > 1)
+            .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) > 1)
             .parameter("head", para_labels, lambda v: [v["ls"][0]])
-            .parameter_constraint(lambda v: v["head"] is None or (len(v["head"]) == 3 and
-                                                                  (v["head"][1] == v["i1"] or v["head"][1] is None) and
-                                                                  (v["head"][2] == v["o1"] or v["head"][2] is None)))
+            #.parameter_constraint(lambda v: v["head"] is None or (len(v["head"]) == 3 and
+            #                                                      (v["head"][1] == v["i1"] or v["head"][1] is None) and
+            #                                                      (v["head"][2] == v["o1"] or v["head"][2] is None)))
             .parameter("tail", paratuples, lambda v: [v["ls"][1:]])
             .suffix((
                     (Constructor("DAG_component",
@@ -307,7 +319,7 @@ class Labeled_DAG_Repository:
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("ls"))
-                                #& Constructor("structure", Literal(None))
+                                & Constructor("structure", Literal(None))
                                 )
                       & Constructor("ID"))
                      )
@@ -330,7 +342,7 @@ class Labeled_DAG_Repository:
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("ls"))
-                                #& Constructor("structure", Literal(None))
+                                & Constructor("structure", Literal(None))
                                 )
                       & Constructor("non_ID"))
                      )
@@ -353,7 +365,7 @@ class Labeled_DAG_Repository:
                                   & Constructor("output", Var("o"))
                                   & Constructor("output", Literal(None))
                                   & Constructor("structure", Var("ls"))
-                                  # & Constructor("structure", Literal(None))
+                                  & Constructor("structure", Literal(None))
                                   )
                       & Constructor("non_ID"))
                      )
@@ -376,7 +388,7 @@ class Labeled_DAG_Repository:
                                   & Constructor("output", Var("o"))
                                   & Constructor("output", Literal(None))
                                   & Constructor("structure", Var("ls"))
-                                  # & Constructor("structure", Literal(None))
+                                  & Constructor("structure", Literal(None))
                                   )
                       & Constructor("non_ID"))
                      )
@@ -413,17 +425,17 @@ class Labeled_DAG_Repository:
             .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) > 1)
             .parameter("head", paratuples, lambda v: [v["ls"][0]])
             .parameter_constraint(lambda v: v["head"] is None or
-                                            ((v["i"] == sum([t[1] for t in v["head"]]) if None not in [t[1] for t in v["head"]]
-                                              else v["i"] < sum([t[1] for t in v["head"] if t[1] is not None]))
-                                             and (v["j"] == sum([t[2] for t in v["head"]]) if None not in [t[2] for t in v["head"]]
-                                                  else v["j"] < sum([t[2] for t in v["head"] if t[2] is not None]))))
+                                            (v["i"] == sum([t[1] for t in v["head"]]) if None not in [t for t in v["head"]] and None not in [t[1] for t in v["head"]]
+                                             else v["i"] < sum([t[1] for t in v["head"] if t is not None and t[1] is not None])
+                                             and v["j"] == sum([t[2] for t in v["head"]]) if None not in [t for t in v["head"]] and None not in [t[2] for t in v["head"]]
+                                                  else v["j"] < sum([t[2] for t in v["head"] if t is not None and t[2] is not None])))
             .parameter("tail", paratupletuples, lambda v: [v["ls"][1:]])
             .parameter_constraint(lambda v: v["tail"] is None or
                                             (len(v["tail"]) > 0 and
-                                             (v["j"] == sum([t[1] for t in v["tail"][0]]) if None not in [t[1] for t in v["tail"][0]]
-                                              else v["j"] < sum([t[1] for t in v["tail"][0] if t[1] is not None])) and
-                                             (v["o"] == sum([t[2] for t in v["tail"][-1]]) if None not in [t[2] for t in v["tail"][-1]]
-                                              else v["o"] < sum([t[2] for t in v["tail"][-1] if t[2] is not None]))))
+                                             (v["j"] == sum([t[1] for t in v["tail"][0]]) if None not in [t for t in v["tail"][0]] and None not in [t[1] for t in v["tail"][0]]
+                                              else v["j"] < sum([t[1] for t in v["tail"][0] if t is not None and t[1] is not None])) and
+                                             (v["o"] == sum([t[2] for t in v["tail"][-1]]) if None not in [t for t in v["tail"][-1]] and None not in [t[2] for t in v["tail"][-1]]
+                                              else v["o"] < sum([t[2] for t in v["tail"][-1] if t is not None and t[2] is not None]))))
             .argument("x", Constructor("DAG_parallel",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("j"))
@@ -442,6 +454,38 @@ class Labeled_DAG_Repository:
 
 if __name__ == "__main__":
     repo = Labeled_DAG_Repository(labels=["A", "B"], dimensions=range(1,4))
+
+    io_labels = repo.Para(["A", "B"], range(1, 4))
+
+    #for l in io_labels:
+    #    print(l)
+
+    paratuples = repo.ParaTuples(io_labels, max_length=3)
+    """    
+    print(None in io_labels)
+    print((None,) in paratuples)
+
+    test = (None,)
+    print(test in paratuples)
+    print(test[0] in io_labels)
+
+    para_labels = io_labels
+
+    v = {"i": 3, "o": 3, "ls": (None,), "para": ("A", 3, None)}
+
+    print([l for l in para_labels if l[1] == v["i"] and l[2] == v["o"]] if v["ls"][0] is None else [v["ls"][0]])
+
+    print(v["para"] in para_labels)
+
+    print(len(v["para"]) == 3 and
+          (v["para"][1] == v["i"] if v["para"][1] is not None else True) and
+          (v["para"][2] == v["o"] if v["para"][2] is not None else True)
+          )
+
+    for l in para_labels:
+        print(l)
+    """
+
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
 
@@ -482,8 +526,8 @@ if __name__ == "__main__":
 
     target7 = Constructor("DAG_component",
                           Constructor("input", Literal(3))
-                          & Constructor("output", Literal(1))
-                          & Constructor("structure", Literal(("A", None, 1))))
+                          & Constructor("output", Literal(3))
+                          & Constructor("structure", Literal(("A", None, 3))))
 
     target8 = Constructor("DAG_component",
                           Constructor("input", Literal(3))
@@ -586,31 +630,78 @@ if __name__ == "__main__":
                            & Constructor("structure", Literal((("swap", None, None), None, None))))
 
     target28 = Constructor("DAG_parallel",
-                           Constructor("input", Literal(2))
-                           & Constructor("output", Literal(2))
-                           & Constructor("structure", Literal((("B", 1, 1), ("A", 1, 1)))))
+                           Constructor("input", Literal(3))
+                           & Constructor("output", Literal(3))
+                           & Constructor("structure", Literal((("A", 3, 3),))))
 
     target29 = Constructor("DAG_parallel",
                            Constructor("input", Literal(2))
                            & Constructor("output", Literal(2))
                            & Constructor("structure", Literal(((("swap", 0, 1), 1, 1), ("A", 1, 1)))))
 
-    target30 = Constructor("DAG",
-                           Constructor("input", Literal(2))
-                           & Constructor("output", Literal(2))
-                           & Constructor("structure", Literal(((("B", 1, 1), ("A", 1, 1)),))))
+    target30 = Constructor("DAG_parallel",
+                           Constructor("input", Literal(None))
+                           & Constructor("output", Literal(None))
+                           & Constructor("structure", Literal(((("swap", 0, 1), 1, 1), ("A", 1, 1)))))
 
-    target31 = Constructor("DAG",
+    target31 = Constructor("DAG_parallel",
+                           Constructor("input", Literal(3))
+                           & Constructor("output", Literal(3))
+                           & Constructor("structure", Literal((("A", None, 3),))))
+
+    target32 = Constructor("DAG_parallel",
+                           Constructor("input", Literal(1))
+                           & Constructor("output", Literal(1))
+                           & Constructor("structure", Literal(None)))
+
+    target33 = Constructor("DAG_parallel",
+                           Constructor("input", Literal(None))
+                           & Constructor("output", Literal(None))
+                           & Constructor("structure", Literal((None,))))
+
+    target34 = Constructor("DAG_parallel",
+                           Constructor("input", Literal(1))
+                           & Constructor("output", Literal(1))
+                           & Constructor("structure", Literal((None, None))))
+
+    target35 = Constructor("DAG",
                            Constructor("input", Literal(2))
                            & Constructor("output", Literal(2))
-                           & Constructor("structure", Literal(((("B", 1, 1), ("A", 1, 1)),((("swap", 0, 1), 1, 1), ("A", 1, 1)),))))
+                           & Constructor("structure", Literal(
+                               ((("B", 1, 1), ("A", 1, 1)), ((("swap", 0, 1), 1, 1), ("A", 1, 1)),
+                                ((("swap", 1, 1), 2, 2),)))))
+
+    target36 = Constructor("DAG",
+                           Constructor("input", Literal(None))
+                           & Constructor("output", Literal(None))
+                           & Constructor("structure", Literal(
+                               ((("B", 1, 1), ("A", 1, 1)), ((("swap", 0, 1), 1, 1), ("A", 1, 1)),
+                                ((("swap", 1, 1), 2, 2),)))))
+
+    target37 = Constructor("DAG",
+                           Constructor("input", Literal(None))
+                           & Constructor("output", Literal(None))
+                           & Constructor("structure", Literal(
+                               ((("A", 1, 1), None), ((("swap", 0, 1), 1, 1), ("A", 1, 2)),
+                                ((("swap", 1, 2), 3, 3),))
+                           )))
+
+    target38 = Constructor("DAG",
+                           Constructor("input", Literal(3))
+                           & Constructor("output", Literal(3))
+                           & Constructor("structure", Literal(
+                               ((("B", None, 1), ("A", 1, None)), (("A", 1, 2), None), None)
+                           )))
+
 
     targets = [target0, target1, target2, target3, target4, target5, target6, target7,
                target8, target9, target10, target11, target12, target13, target14,
                target15, target16, target17, target18, target19, target20, target21,
-               target22, target23, target24, target25, target26, target27, target28, target29, target30, target31]
+               target22, target23, target24, target25, target26, target27, target28, target29, target30, target31,
+               target32, target33, target34, target35, target36, target37, target38]
 
-    target = target31
+    #"""
+    target = target34
 
     print(target)
 
@@ -623,7 +714,8 @@ if __name__ == "__main__":
 
     for t in terms:
         print(t)
-
+    #"""
+"""
     rs = []
     for t in targets:
         print("Searching for target:")
@@ -636,3 +728,4 @@ if __name__ == "__main__":
         rs.append(n > 0)
 
     print(all(rs))
+"""
