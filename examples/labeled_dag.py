@@ -221,7 +221,7 @@ class Labeled_DAG_Repository:
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
-
+            '''
             "beside_singleton": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("o", dimension)
@@ -285,7 +285,64 @@ class Labeled_DAG_Repository:
                      & Constructor("ID")
                      )
                  )),
+                 ''' : Constructor("comment"),
 
+            "beside_singleton_1": SpecificationBuilder()
+            .parameter("i", dimension)
+            .parameter("o", dimension)
+            .parameter("ls", paratuples)
+            .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) == 1)
+            .parameter("para", para_labels, lambda v: [v["ls"][
+                                                           0]])  # [l for l in para_labels if l[1] == v["i"] and l[2] == v["o"]] if v["ls"][0] is None else [v["ls"][0]])
+            .parameter_constraint(lambda v: (len(v["para"]) == 3 and
+                                            (v["para"][1] == v["i"] if v["para"][1] is not None else True) and
+                                            (v["para"][2] == v["o"] if v["para"][2] is not None else True)
+                                             ) if v["para"] is not None else True)
+            # .parameter_constraint(lambda v: True if print(v["para"]) else True)
+            .argument("x",Constructor("DAG_component",
+                                       Constructor("input", Var("i"))
+                                       & Constructor("output", Var("o"))
+                                       & Constructor("structure", Var("para")))
+                     & Constructor("ID"))
+            .suffix(Constructor("DAG_parallel",
+                                Constructor("input", Var("i"))
+                                & Constructor("input", Literal(None))
+                                & Constructor("output", Var("o"))
+                                & Constructor("output", Literal(None))
+                                & Constructor("structure", Var("ls"))
+                                & Constructor("structure", Literal(None))
+                                )
+                  & Constructor("ID")),
+
+
+            "beside_singleton_2": SpecificationBuilder()
+            .parameter("i", dimension)
+            .parameter("o", dimension)
+            .parameter("ls", paratuples)
+            .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) == 1)
+            .parameter("para", para_labels, lambda v: [v["ls"][
+                                                           0]])  # [l for l in para_labels if l[1] == v["i"] and l[2] == v["o"]] if v["ls"][0] is None else [v["ls"][0]])
+            .parameter_constraint(lambda v: (len(v["para"]) == 3 and
+                                            (v["para"][1] == v["i"] if v["para"][1] is not None else True) and
+                                            (v["para"][2] == v["o"] if v["para"][2] is not None else True)
+                                             ) if v["para"] is not None else True)
+            # .parameter_constraint(lambda v: True if print(v["para"]) else True)
+            .argument("x",Constructor("DAG_component",
+                                       Constructor("input", Var("i"))
+                                       & Constructor("output", Var("o"))
+                                       & Constructor("structure", Var("para")))
+                     & Constructor("non_ID"))
+            .suffix(Constructor("DAG_parallel",
+                                Constructor("input", Var("i"))
+                                & Constructor("input", Literal(None))
+                                & Constructor("output", Var("o"))
+                                & Constructor("output", Literal(None))
+                                & Constructor("structure", Var("ls"))
+                                & Constructor("structure", Literal(None))
+                                )
+                  & Constructor("non_ID")),
+
+            '''
             "beside_cons": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("i1", dimension)
@@ -393,6 +450,143 @@ class Labeled_DAG_Repository:
                       & Constructor("non_ID"))
                      )
                     ),
+                    ''': Constructor("comment"),
+
+            "beside_cons_1": SpecificationBuilder()
+            .parameter("i", dimension)
+            .parameter("i1", dimension)
+            .parameter("i2", dimension, lambda v: [v["i"] - v["i1"]])
+            .parameter("o", dimension)
+            .parameter("o1", dimension)
+            .parameter("o2", dimension, lambda v: [v["o"] - v["o1"]])
+            .parameter("ls", paratuples)
+            .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) > 1)
+            .parameter("head", para_labels, lambda v: [v["ls"][0]])
+            .parameter_constraint(lambda v: v["head"] is None or (len(v["head"]) == 3 and
+                                                                  (v["head"][1] == v["i1"] or v["head"][1] is None) and
+                                                                  (v["head"][2] == v["o1"] or v["head"][2] is None)))
+            .parameter("tail", paratuples, lambda v: [v["ls"][1:]])
+            .argument("x", Constructor("DAG_component",
+                                         Constructor("input", Var("i1"))
+                                         & Constructor("output", Var("o1"))
+                                         & Constructor("structure", Var("head")))
+                             & Constructor("ID"))
+            .argument("y", Constructor("DAG_parallel",
+                                         Constructor("input", Var("i2"))
+                                         & Constructor("output", Var("o2"))
+                                         & Constructor("structure", Var("tail")))
+                             & Constructor("ID"))
+            .suffix(Constructor("DAG_parallel",
+                                         Constructor("input", Var("i"))
+                                         & Constructor("input", Literal(None))
+                                         & Constructor("output", Var("o"))
+                                         & Constructor("output", Literal(None))
+                                         & Constructor("structure", Var("ls"))
+                                         & Constructor("structure", Literal(None))
+                                         )
+                             & Constructor("ID")),
+
+            "beside_cons_2": SpecificationBuilder()
+            .parameter("i", dimension)
+            .parameter("i1", dimension)
+            .parameter("i2", dimension, lambda v: [v["i"] - v["i1"]])
+            .parameter("o", dimension)
+            .parameter("o1", dimension)
+            .parameter("o2", dimension, lambda v: [v["o"] - v["o1"]])
+            .parameter("ls", paratuples)
+            .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) > 1)
+            .parameter("head", para_labels, lambda v: [v["ls"][0]])
+            .parameter_constraint(lambda v: v["head"] is None or (len(v["head"]) == 3 and
+                                                                  (v["head"][1] == v["i1"] or v["head"][1] is None) and
+                                                                  (v["head"][2] == v["o1"] or v["head"][2] is None)))
+            .parameter("tail", paratuples, lambda v: [v["ls"][1:]])
+            .argument("x", Constructor("DAG_component",
+                                       Constructor("input", Var("i1"))
+                                       & Constructor("output", Var("o1"))
+                                       & Constructor("structure", Var("head")))
+                      & Constructor("non_ID"))
+            .argument("y", Constructor("DAG_parallel",
+                                       Constructor("input", Var("i2"))
+                                       & Constructor("output", Var("o2"))
+                                       & Constructor("structure", Var("tail")))
+                      & Constructor("ID"))
+            .suffix(Constructor("DAG_parallel",
+                                Constructor("input", Var("i"))
+                                & Constructor("input", Literal(None))
+                                & Constructor("output", Var("o"))
+                                & Constructor("output", Literal(None))
+                                & Constructor("structure", Var("ls"))
+                                & Constructor("structure", Literal(None))
+                                )
+                    & Constructor("non_ID")),
+
+            "beside_cons_3": SpecificationBuilder()
+            .parameter("i", dimension)
+            .parameter("i1", dimension)
+            .parameter("i2", dimension, lambda v: [v["i"] - v["i1"]])
+            .parameter("o", dimension)
+            .parameter("o1", dimension)
+            .parameter("o2", dimension, lambda v: [v["o"] - v["o1"]])
+            .parameter("ls", paratuples)
+            .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) > 1)
+            .parameter("head", para_labels, lambda v: [v["ls"][0]])
+            .parameter_constraint(lambda v: v["head"] is None or (len(v["head"]) == 3 and
+                                                                  (v["head"][1] == v["i1"] or v["head"][1] is None) and
+                                                                  (v["head"][2] == v["o1"] or v["head"][2] is None)))
+            .parameter("tail", paratuples, lambda v: [v["ls"][1:]])
+            .argument("x", Constructor("DAG_component",
+                                       Constructor("input", Var("i1"))
+                                       & Constructor("output", Var("o1"))
+                                       & Constructor("structure", Var("head")))
+                      & Constructor("ID"))
+            .argument("y", Constructor("DAG_parallel",
+                                       Constructor("input", Var("i2"))
+                                       & Constructor("output", Var("o2"))
+                                       & Constructor("structure", Var("tail")))
+                      & Constructor("non_ID"))
+            .suffix(Constructor("DAG_parallel",
+                                Constructor("input", Var("i"))
+                                & Constructor("input", Literal(None))
+                                & Constructor("output", Var("o"))
+                                & Constructor("output", Literal(None))
+                                & Constructor("structure", Var("ls"))
+                                & Constructor("structure", Literal(None))
+                                )
+                    & Constructor("non_ID")),
+
+            "beside_cons_4": SpecificationBuilder()
+            .parameter("i", dimension)
+            .parameter("i1", dimension)
+            .parameter("i2", dimension, lambda v: [v["i"] - v["i1"]])
+            .parameter("o", dimension)
+            .parameter("o1", dimension)
+            .parameter("o2", dimension, lambda v: [v["o"] - v["o1"]])
+            .parameter("ls", paratuples)
+            .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) > 1)
+            .parameter("head", para_labels, lambda v: [v["ls"][0]])
+            .parameter_constraint(lambda v: v["head"] is None or (len(v["head"]) == 3 and
+                                                                  (v["head"][1] == v["i1"] or v["head"][1] is None) and
+                                                                  (v["head"][2] == v["o1"] or v["head"][2] is None)))
+            .parameter("tail", paratuples, lambda v: [v["ls"][1:]])
+            .argument("x", Constructor("DAG_component",
+                                       Constructor("input", Var("i1"))
+                                       & Constructor("output", Var("o1"))
+                                       & Constructor("structure", Var("head")))
+                      & Constructor("non_ID"))
+            .argument("y", Constructor("DAG_parallel",
+                                       Constructor("input", Var("i2"))
+                                       & Constructor("output", Var("o2"))
+                                       & Constructor("structure", Var("tail")))
+                      & Constructor("non_ID"))
+            .suffix(Constructor("DAG_parallel",
+                                Constructor("input", Var("i"))
+                                & Constructor("input", Literal(None))
+                                & Constructor("output", Var("o"))
+                                & Constructor("output", Literal(None))
+                                & Constructor("structure", Var("ls"))
+                                & Constructor("structure", Literal(None))
+                                )
+                    & Constructor("non_ID")),
 
             "before_singleton": SpecificationBuilder()
             .parameter("i", dimension)
@@ -401,10 +595,25 @@ class Labeled_DAG_Repository:
             .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) == 1)
             .parameter("ls1", paratuples, lambda v: [v["ls"][0]])
             .parameter_constraint(lambda v: v["ls1"] is None or
-                                            ((v["i"] == sum([t[1] for t in v["ls1"]]) if None not in [t[1] for t in v["ls1"]]
-                                              else v["i"] < sum([t[1] for t in v["ls1"] if t[1] is not None]))
-                                             and (v["o"] == sum([t[2] for t in v["ls1"]]) if None not in [t[2] for t in v["ls1"]]
-                                                  else v["o"] < sum([t[2] for t in v["ls1"] if t[2] is not None]))))
+                                            (
+                                                    (
+                                                        v["i"] == sum([t[1] for t in v["ls1"]])
+                                                        if None not in [t for t in v["ls1"]]
+                                                           and None not in [t[1] for t in v["ls1"]]
+                                                        else v["i"] > sum([t[1] for t in v["ls1"]
+                                                                           if t is not None
+                                                                           and t[1] is not None])
+                                                    )
+                                                    and
+                                                    (
+                                                        v["o"] == sum([t[2] for t in v["ls1"]])
+                                                        if None not in [t for t in v["ls1"]]
+                                                           and None not in [t[2] for t in v["ls1"]]
+                                                        else v["o"] > sum([t[2] for t in v["ls1"]
+                                                                           if t is not None
+                                                                           and t[2] is not None]))
+                                            )
+                                  )
             .argument("x", Constructor("DAG_parallel",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("o"))
@@ -424,18 +633,45 @@ class Labeled_DAG_Repository:
             .parameter("ls", paratupletuples)
             .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) > 1)
             .parameter("head", paratuples, lambda v: [v["ls"][0]])
-            .parameter_constraint(lambda v: v["head"] is None or
-                                            (v["i"] == sum([t[1] for t in v["head"]]) if None not in [t for t in v["head"]] and None not in [t[1] for t in v["head"]]
-                                             else v["i"] < sum([t[1] for t in v["head"] if t is not None and t[1] is not None])
-                                             and v["j"] == sum([t[2] for t in v["head"]]) if None not in [t for t in v["head"]] and None not in [t[2] for t in v["head"]]
-                                                  else v["j"] < sum([t[2] for t in v["head"] if t is not None and t[2] is not None])))
+            .parameter_constraint(lambda v: (
+                                                (v["i"] == sum([t[1] for t in v["head"]])
+                                                 if None not in [t for t in v["head"]]
+                                                    and None not in [t[1] for t in v["head"]]
+                                                 else v["i"] > sum([t[1] for t in v["head"]
+                                                                    if t is not None and t[1] is not None]))
+                                                and (v["j"] == sum([t[2] for t in v["head"]])
+                                                     if None not in [t for t in v["head"]]
+                                                        and None not in [t[2] for t in v["head"]]
+                                                     else v["j"] > sum([t[2] for t in v["head"]
+                                                                        if t is not None and t[2] is not None]))
+                                             )
+                                  )
             .parameter("tail", paratupletuples, lambda v: [v["ls"][1:]])
             .parameter_constraint(lambda v: v["tail"] is None or
-                                            (len(v["tail"]) > 0 and
-                                             (v["j"] == sum([t[1] for t in v["tail"][0]]) if None not in [t for t in v["tail"][0]] and None not in [t[1] for t in v["tail"][0]]
-                                              else v["j"] < sum([t[1] for t in v["tail"][0] if t is not None and t[1] is not None])) and
-                                             (v["o"] == sum([t[2] for t in v["tail"][-1]]) if None not in [t for t in v["tail"][-1]] and None not in [t[2] for t in v["tail"][-1]]
-                                              else v["o"] < sum([t[2] for t in v["tail"][-1] if t is not None and t[2] is not None]))))
+                                            (
+                                                    (len(v["tail"]) > 0) and
+                                                    (
+                                                            v["tail"][0] is None or
+                                                            (
+                                                                v["j"] == sum([t[1] for t in v["tail"][0]])
+                                                                if None not in [t for t in v["tail"][0]]
+                                                                   and None not in [t[1] for t in v["tail"][0]]
+                                                                else v["j"] > sum([t[1] for t in v["tail"][0]
+                                                                                   if t is not None
+                                                                                   and t[1] is not None])
+                                                             )
+                                                    ) and
+                                                    (
+                                                            v["tail"][-1] is None or
+                                                            (v["o"] == sum([t[2] for t in v["tail"][-1]])
+                                                             if None not in [t for t in v["tail"][-1]]
+                                                                and None not in [t[2] for t in v["tail"][-1]]
+                                                             else v["o"] > sum([t[2] for t in v["tail"][-1]
+                                                                                if t is not None
+                                                                                and t[2] is not None]))
+                                                    )
+                                            )
+                                  )
             .argument("x", Constructor("DAG_parallel",
                                        Constructor("input", Var("i"))
                                        & Constructor("output", Var("j"))
@@ -461,6 +697,9 @@ if __name__ == "__main__":
     #    print(l)
 
     paratuples = repo.ParaTuples(io_labels, max_length=3)
+
+
+
     """    
     print(None in io_labels)
     print((None,) in paratuples)
@@ -660,33 +899,56 @@ if __name__ == "__main__":
                            & Constructor("structure", Literal((None,))))
 
     target34 = Constructor("DAG_parallel",
-                           Constructor("input", Literal(1))
-                           & Constructor("output", Literal(1))
+                           Constructor("input", Literal(3))
+                           & Constructor("output", Literal(3))
                            & Constructor("structure", Literal((None, None))))
 
-    target35 = Constructor("DAG",
+    target35 = Constructor("DAG_parallel",
+                           Constructor("input", Literal(None))
+                           & Constructor("output", Literal(None))
+                           & Constructor("structure", Literal(((("swap", 0, 1), 1, None), ("A", None, 1)))))
+
+    target36 = Constructor("DAG_parallel",
+                           Constructor("input", Literal(None))
+                           & Constructor("output", Literal(None))
+                           & Constructor("structure", Literal(((("swap", 0, 1), 1, None), None))))
+
+    target37 = Constructor("DAG_parallel",
+                           Constructor("input", Literal(None))
+                           & Constructor("output", Literal(None))
+                           & Constructor("structure", Literal((None, ("A", None, 1)))))
+
+    target38 = Constructor("DAG",
                            Constructor("input", Literal(2))
                            & Constructor("output", Literal(2))
                            & Constructor("structure", Literal(
                                ((("B", 1, 1), ("A", 1, 1)), ((("swap", 0, 1), 1, 1), ("A", 1, 1)),
                                 ((("swap", 1, 1), 2, 2),)))))
 
-    target36 = Constructor("DAG",
+    target39 = Constructor("DAG",
                            Constructor("input", Literal(None))
                            & Constructor("output", Literal(None))
                            & Constructor("structure", Literal(
                                ((("B", 1, 1), ("A", 1, 1)), ((("swap", 0, 1), 1, 1), ("A", 1, 1)),
-                                ((("swap", 1, 1), 2, 2),)))))
+                                ((("swap", 1, 1), 2, 2),))
+                           )))
 
-    target37 = Constructor("DAG",
+    target40 = Constructor("DAG",
                            Constructor("input", Literal(None))
                            & Constructor("output", Literal(None))
                            & Constructor("structure", Literal(
-                               ((("A", 1, 1), None), ((("swap", 0, 1), 1, 1), ("A", 1, 2)),
-                                ((("swap", 1, 2), 3, 3),))
+                               ((("B", 1, None), ("A", 1, None)), ((("swap", 0, 1), 1, 1), ("A", 2, None)),
+                                ((("swap", 1, 1), 2, 2),))
                            )))
 
-    target38 = Constructor("DAG",
+    target41 = Constructor("DAG",
+                           Constructor("input", Literal(3))
+                           & Constructor("output", Literal(3))
+                           & Constructor("structure", Literal(
+                               ((None,),)
+                           )))
+
+    target42 = Constructor("DAG",
                            Constructor("input", Literal(3))
                            & Constructor("output", Literal(3))
                            & Constructor("structure", Literal(
@@ -698,10 +960,11 @@ if __name__ == "__main__":
                target8, target9, target10, target11, target12, target13, target14,
                target15, target16, target17, target18, target19, target20, target21,
                target22, target23, target24, target25, target26, target27, target28, target29, target30, target31,
-               target32, target33, target34, target35, target36, target37, target38]
+               target32, target33, target34, target35, target36, target37, target38,
+               target39, target40, target41, target42]
 
     #"""
-    target = target34
+    target = target42
 
     print(target)
 
