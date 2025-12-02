@@ -1027,7 +1027,7 @@ class Labeled_DAG_Repository:
         }
 
 if __name__ == "__main__":
-    repo = Labeled_DAG_Repository(labels=["A", "B"], dimensions=range(1,6))
+    repo = Labeled_DAG_Repository(labels=["A", "B"], dimensions=range(1, 4))
 
     io_labels = repo.Para(["A", "B"], range(1, 4))
 
@@ -1226,6 +1226,7 @@ if __name__ == "__main__":
                            & Constructor("output", Literal(3))
                            & Constructor("structure", Literal((("A", None, 3),))))
 
+    # input = output = 1 enforces beside_singleton
     target32 = Constructor("DAG_parallel",
                            Constructor("input", Literal(1))
                            & Constructor("output", Literal(1))
@@ -1291,7 +1292,14 @@ if __name__ == "__main__":
                            & Constructor("output", Literal(3))
                            & Constructor("structure", Literal(
                                ((("B", None, 1), ("A", 1, None)), (("A", 1, 2), None), None)
-                           )))
+                           ))) # for labels=["A", "B"], dimensions=range(1, 4) this search space has terms
+
+    target42a = Constructor("DAG",
+                           Constructor("input", Literal(1))
+                           & Constructor("output", Literal(3))
+                           & Constructor("structure", Literal(
+                               ((("B", 1, None),), (None, ("A", 1, None)), (None,),)
+                           ))) # for labels=["A", "B"], dimensions=range(1, 4) this search space has 6534 terms
 
 
     targets = [target0, target1, target2, target3, target4, target5, target6, target7,
@@ -1435,7 +1443,7 @@ if __name__ == "__main__":
                            )))
 
     #"""
-    target = target46
+    target = target42
 
     print(target)
 
@@ -1444,11 +1452,12 @@ if __name__ == "__main__":
     #for r in search_space.as_tuples():
     #    print(r)
 
-    terms = search_space.enumerate_trees(target, 100)
 
-    for t in terms:
-        print(t)
-        print(repo.swaplaw4(t.children[6], t.children[7]))
+    terms = search_space.enumerate_trees(target, 1000000)
+    print("finish synthesis, start enumerate")
+    test = list(terms)
+    print(f"Found {len(test)} terms.")
+
    # """
 """
     rs = []
