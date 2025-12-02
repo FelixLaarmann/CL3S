@@ -77,17 +77,14 @@ class Labeled_DAG_Repository:
         def __contains__(self, value):
             return value is None or (isinstance(value, tuple) and all(True if v is None else v in self.para_tuples for v in value))
 
-
-    def swaplaw1(self, head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
+    @staticmethod
+    def swaplaw1(head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
         """
         before(swap(m+n, m, n), before(beside(x(n,p), y(m,q)), swap(p+q, p, q)))
         ->
         beside(y(m,q),x(n,p))
 
         forbid the pattern on the left-hand side of the rewrite rule by returning False if it is matched
-
-        :param t:
-        :return:
         """
 
         left = head.root
@@ -155,7 +152,8 @@ class Labeled_DAG_Repository:
                             return False
         return True
 
-    def swaplaw2(self, head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
+    @staticmethod
+    def swaplaw2(head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
         """
         before(besides(swap(m+n, m, n), copy(p,edge())), besides(copy(n, edge()), swap(m+p, m, p)))
         ->
@@ -163,8 +161,6 @@ class Labeled_DAG_Repository:
 
         forbid the pattern on the left-hand side of the rewrite rule by returning False if it is matched
 
-        :param t:
-        :return:
         """
 
         left = head.root
@@ -247,16 +243,14 @@ class Labeled_DAG_Repository:
                             return False
         return True
 
-    def swaplaw3(self, head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
+    @staticmethod
+    def swaplaw3(head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
         """
         before(swap(m+n, m, n), swap(n+m, n, m))
         ->
         copy(m+n, edge())
 
         forbid the pattern on the left-hand side of the rewrite rule by returning False if it is matched
-
-        :param t:
-        :return:
         """
         left = head.root
         right = tail.root
@@ -311,16 +305,14 @@ class Labeled_DAG_Repository:
                         return False
         return True
 
-    def swaplaw4(self, head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
+    @staticmethod
+    def swaplaw4(head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
         """
         before(besides(copy(m, edge()), swap(n+p, n, p)), besides(swap(m+p, m, p), copy(n,edge())))
         ->
         swap(m + n + p, m+n, p)
 
         forbid the pattern on the left-hand side of the rewrite rule by returning False if it is matched
-
-        :param t:
-        :return:
         """
         left = head.root
         right = tail.root
@@ -596,7 +588,7 @@ class Labeled_DAG_Repository:
                                 & Constructor("structure", Var("ls"))
                                 & Constructor("structure", Literal(None))
                                 )
-                  & Constructor("non_ID")
+                  & Constructor("non_ID") & Constructor("last", Constructor("non_ID"))
                   )
                  )
                 &
@@ -732,7 +724,7 @@ class Labeled_DAG_Repository:
                                        Constructor("input", Var("i2"))
                                        & Constructor("output", Var("o2"))
                                        & Constructor("structure", Var("tail")))
-                     & Constructor("non_ID"))
+                     & Constructor("non_ID") & Constructor("last", Constructor("non_ID")))
                      **
                      (Constructor("DAG_parallel",
                                 Constructor("input", Var("i"))
@@ -742,7 +734,7 @@ class Labeled_DAG_Repository:
                                 & Constructor("structure", Var("ls"))
                                 & Constructor("structure", Literal(None))
                                 )
-                      & Constructor("non_ID"))
+                      & Constructor("non_ID") & Constructor("last", Constructor("ID")))
                      )
                     &
                     ((Constructor("DAG_component",
@@ -765,7 +757,7 @@ class Labeled_DAG_Repository:
                                   & Constructor("structure", Var("ls"))
                                   & Constructor("structure", Literal(None))
                                   )
-                      & Constructor("non_ID"))
+                      & Constructor("non_ID") & Constructor("last", Constructor("non_ID")))
                      )
                     &
                     ((Constructor("DAG_component",
@@ -788,7 +780,7 @@ class Labeled_DAG_Repository:
                                   & Constructor("structure", Var("ls"))
                                   & Constructor("structure", Literal(None))
                                   )
-                      & Constructor("non_ID"))
+                      & Constructor("non_ID") & Constructor("last", Constructor("non_ID")))
                      )
                     ),
                     #''': Constructor("comment"),
@@ -1022,6 +1014,10 @@ class Labeled_DAG_Repository:
                                        Constructor("input", Var("j"))
                                        & Constructor("output", Var("o"))
                                        & Constructor("structure", Var("tail"))))
+            .constraint(lambda v: self.swaplaw1(v["x"], v["y"]))
+            .constraint(lambda v: self.swaplaw2(v["x"], v["y"]))
+            .constraint(lambda v: self.swaplaw3(v["x"], v["y"]))
+            .constraint(lambda v: self.swaplaw4(v["x"], v["y"]))
             .suffix(Constructor("DAG",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
@@ -1342,14 +1338,6 @@ if __name__ == "__main__":
                                 ((("swap", p, q), p+q, p+q),), (("A", p+q, p+q),))
                            )))
 
-
-    """
-        test swaplaw2 - predicate:
-        terms of structure
-        before(besides(swap(m+n, m, n), copy(p,edge())), besides(copy(n, edge()), swap(m+p, m, p)))
-        should be False, everything else True
-        """
-
     """
     test the following law
     beside(swap(n, 0, n), swap(m, 0, m))
@@ -1447,7 +1435,7 @@ if __name__ == "__main__":
                            )))
 
     #"""
-    target = target54(2, 2, 1)
+    target = target46
 
     print(target)
 
