@@ -103,6 +103,7 @@ class Labeled_DAG_Repository:
             left = left_term.root
             right_head_root = right_head.root
             right_tail_root = right_tail.root
+            # TODO: in our list-like structure, this pattern should also match on the head of a before_cons additionally to a before_singleton
             if left == "swap" and "beside_cons" in right_head_root and "before_singleton" in right_tail_root:
                 # further checks needed
                 if len(left_term.children) != 4 or len(right_head.children) != 11 or len(right_tail.children) != 5:
@@ -129,7 +130,30 @@ class Labeled_DAG_Repository:
                         q = right_swap.children[2]
                         if m == y_m and n == x_n and p == x_p and q == y_q:
                             return False
-        return True  # placeholder implementation
+        return True
+
+    def swaplaw2(self, head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
+        """
+        before(besides(swap(m+n, m, n), copy(p,edge())), besides(copy(n, edge()), swap(m+p, m, p)))
+        ->
+        swap(m + n + p, m, n+p)
+
+        forbid the pattern on the left-hand side of the rewrite rule by returning False if it is matched
+
+        :param t:
+        :return:
+        """
+
+        left = head.root
+        right = tail.root
+
+        if "beside_cons" in left and "before_singleton" in right:
+            if len(head.children) != 11 or len(tail.children) != 8:
+                raise ValueError("Derivation trees have not the expected shape.")
+            # TODO: finish implementation
+            return False
+
+        return True
 
 
     def specification(self):
