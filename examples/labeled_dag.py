@@ -100,12 +100,10 @@ class Labeled_DAG_Repository:
             right_head = tail.children[6]
             right_tail = tail.children[7]
 
-            left = left_term.root
+            left_term_root = left_term.root
             right_head_root = right_head.root
             right_tail_root = right_tail.root
-            # TODO: in our list-like structure, this pattern should also match on the head of a before_cons additionally to a before_singleton
-            if left == "swap" and "beside_cons" in right_head_root and "before_singleton" in right_tail_root:
-                # further checks needed
+            if (left_term_root == "swap") and "beside_cons" in right_head_root and "before_singleton" in right_tail_root:
                 if len(left_term.children) != 4 or len(right_head.children) != 11 or len(right_tail.children) != 5:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
@@ -122,6 +120,31 @@ class Labeled_DAG_Repository:
                     y_m = right_head_tail.children[0]
                     y_q = right_head_tail.children[1]
                     right_swap = right_tail_term.children[4]
+                    right_swap_root = right_swap.root
+                    if right_swap_root == "swap":
+                        if len(right_swap.children) != 4:
+                            raise ValueError("Derivation trees have not the expected shape.")
+                        p = right_swap.children[1]
+                        q = right_swap.children[2]
+                        if m == y_m and n == x_n and p == x_p and q == y_q:
+                            return False
+            elif (left == "swap") and "beside_cons" in right_head_root and "before_cons" in right_tail_root:
+                if len(left_term.children) != 4 or len(right_head.children) != 11 or len(right_tail.children) != 8:
+                    raise ValueError("Derivation trees have not the expected shape.")
+                m = left_term.children[1]
+                n = left_term.children[2]
+                x_n = right_head.children[1]
+                x_p = right_head.children[4]
+                right_head_tail = right_head.children[10]
+                right_tail_head = right_tail.children[6]
+                right_head_tail_root = right_head_tail.root
+                right_tail_term_root = right_tail_head.root
+                if "beside_singleton" in right_head_tail_root and "beside_singleton" in right_tail_term_root:
+                    if len(right_head_tail.children) != 5 or len(right_tail_head.children) != 5:
+                        raise ValueError("Derivation trees have not the expected shape.")
+                    y_m = right_head_tail.children[0]
+                    y_q = right_head_tail.children[1]
+                    right_swap = right_tail_head.children[4]
                     right_swap_root = right_swap.root
                     if right_swap_root == "swap":
                         if len(right_swap.children) != 4:
@@ -148,11 +171,242 @@ class Labeled_DAG_Repository:
         right = tail.root
 
         if "beside_cons" in left and "before_singleton" in right:
+            if len(head.children) != 11 or len(tail.children) != 5:
+                raise ValueError("Derivation trees have not the expected shape.")
+            left_head = head.children[9]
+            left_tail = head.children[10]
+            right_term = tail.children[4]
+
+            left_swap = left_head.root
+            left_tail_root = left_tail.root
+            right_term_root = right_term.root
+            if (left_swap == "swap") and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
+                if len(left_head.children) != 4 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                    raise ValueError("Derivation trees have not the expected shape.")
+                m = left_head.children[1]
+                n = left_head.children[2]
+                left_tail_term = left_tail.children[4] # swap(p, 0, p)
+                right_head = right_term.children[9] # swap(n, 0, n)
+                right_tail = right_term.children[10]
+
+                left_tail_swap = left_tail_term.root
+                right_head_root = right_head.root
+                right_tail_root = right_tail.root
+                if left_tail_swap == "edges" and right_head_root == "edges" and "beside_singleton" in right_tail_root:
+                    if len(left_tail_term.children) != 2 or len(right_head.children) != 2 or len(right_tail.children) != 5:
+                        raise ValueError("Derivation trees have not the expected shape.")
+                    p = left_tail_term.children[0]
+                    right_n = right_head.children[0]
+
+                    right_tail_term = right_tail.children[4] # swap(m+p, m, p)
+                    right_tail_term_root = right_tail_term.root
+                    if (right_tail_term_root == "swap") and n == right_n:
+                        if len(right_tail_term.children) != 4:
+                            raise ValueError("Derivation trees have not the expected shape.")
+                        right_m = right_tail_term.children[1]
+                        right_p = right_tail_term.children[2]
+                        if m == right_m and p == right_p:
+                            return False
+        elif "beside_cons" in left and "before_cons" in right:
             if len(head.children) != 11 or len(tail.children) != 8:
                 raise ValueError("Derivation trees have not the expected shape.")
-            # TODO: finish implementation
-            return False
+            left_head = head.children[9]
+            left_tail = head.children[10]
+            right_term = tail.children[6]
 
+            left_swap = left_head.root
+            left_tail_root = left_tail.root
+            right_term_root = right_term.root
+            if (left_swap == "swap") and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
+                if len(left_head.children) != 4 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                    raise ValueError("Derivation trees have not the expected shape.")
+                m = left_head.children[1]
+                n = left_head.children[2]
+                left_tail_term = left_tail.children[4]  # swap(p, 0, p)
+                right_head = right_term.children[9]  # swap(n, 0, n)
+                right_tail = right_term.children[10]
+
+                left_tail_swap = left_tail_term.root
+                right_head_root = right_head.root
+                right_tail_root = right_tail.root
+                if left_tail_swap == "edges" and right_head_root == "edges" and "beside_singleton" in right_tail_root:
+                    if len(left_tail_term.children) != 2 or len(right_head.children) != 2 or len(
+                            right_tail.children) != 5:
+                        raise ValueError("Derivation trees have not the expected shape.")
+                    p = left_tail_term.children[0]
+                    right_n = right_head.children[0]
+
+                    right_tail_term = right_tail.children[4]  # swap(m+p, m, p)
+                    right_tail_term_root = right_tail_term.root
+                    if right_tail_term_root == "swap" and n == right_n:
+                        if len(right_tail_term.children) != 4:
+                            raise ValueError("Derivation trees have not the expected shape.")
+                        right_m = right_tail_term.children[1]
+                        right_p = right_tail_term.children[2]
+                        if m == right_m and p == right_p:
+                            return False
+        return True
+
+    def swaplaw3(self, head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
+        """
+        before(swap(m+n, m, n), swap(n+m, n, m))
+        ->
+        copy(m+n, edge())
+
+        forbid the pattern on the left-hand side of the rewrite rule by returning False if it is matched
+
+        :param t:
+        :return:
+        """
+        left = head.root
+        right = tail.root
+
+        if "beside_singleton" in left and "before_singleton" in right:
+            if len(head.children) != 5 or len(tail.children) != 5:
+                raise ValueError("Derivation trees have not the expected shape.")
+            left_term = head.children[4]
+            right_term = tail.children[4]
+
+
+            left_term_root = left_term.root
+            right_term_root = right_term.root
+            if (left_term_root == "swap") and "beside_singleton" in right_term_root:
+                if len(left_term.children) != 4 or len(right_term.children) != 5:
+                    raise ValueError("Derivation trees have not the expected shape.")
+                m = left_term.children[1]
+                n = left_term.children[2]
+
+                right_beside = right_term.children[4]
+                right_beside_root = right_beside.root
+                if right_beside_root == "swap" or right_beside_root == "swap":
+                    if len(right_beside.children) != 4:
+                        raise ValueError("Derivation trees have not the expected shape.")
+                    right_n = right_beside.children[1]
+                    right_m = right_beside.children[2]
+                    if m == right_m and n == right_n:
+                        return False
+        elif "beside_singleton" in left and "before_cons" in right:
+            if len(head.children) != 5 or len(tail.children) != 8:
+                raise ValueError("Derivation trees have not the expected shape.")
+            left_term = head.children[4]
+            right_term = tail.children[6]
+
+
+            left_term_root = left_term.root
+            right_term_root = right_term.root
+            if (left_term_root == "swap") and "beside_singleton" in right_term_root:
+                if len(left_term.children) != 4 or len(right_term.children) != 5:
+                    raise ValueError("Derivation trees have not the expected shape.")
+                m = left_term.children[1]
+                n = left_term.children[2]
+
+                right_beside = right_term.children[4]
+                right_beside_root = right_beside.root
+                if right_beside_root == "swap":
+                    if len(right_beside.children) != 4:
+                        raise ValueError("Derivation trees have not the expected shape.")
+                    right_n = right_beside.children[1]
+                    right_m = right_beside.children[2]
+                    if m == right_m and n == right_n:
+                        return False
+        return True
+
+    def swaplaw4(self, head: DerivationTree[Any, str, Any], tail: DerivationTree[Any, str, Any]) -> bool:
+        """
+        before(besides(copy(m, edge()), swap(n+p, n, p)), besides(swap(m+p, m, p), copy(n,edge())))
+        ->
+        swap(m + n + p, m+n, p)
+
+        forbid the pattern on the left-hand side of the rewrite rule by returning False if it is matched
+
+        :param t:
+        :return:
+        """
+        left = head.root
+        right = tail.root
+
+        if "beside_cons" in left and "before_singleton" in right:
+            if len(head.children) != 11 or len(tail.children) != 5:
+                raise ValueError("Derivation trees have not the expected shape.")
+            left_head = head.children[9]
+            left_tail = head.children[10]
+            right_term = tail.children[4]
+
+            left_head_root = left_head.root
+            left_tail_root = left_tail.root
+            right_term_root = right_term.root
+            if left_head_root == "edges" and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
+                if len(left_head.children) != 2 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                    raise ValueError("Derivation trees have not the expected shape.")
+                m = left_head.children[0]
+
+                left_tail_term = left_tail.children[4]
+                right_head = right_term.children[9]
+                right_tail = right_term.children[10]
+
+                left_tail_term_root = left_tail_term.root
+                right_head_root = right_head.root
+                right_tail_root = right_tail.root
+                if left_tail_term_root == "swap" and right_head_root == "swap" and "beside_singleton" in right_tail_root:
+                    if len(left_tail_term.children) != 4 or len(right_head.children) != 4 or len(right_tail.children) != 5:
+                        raise ValueError("Derivation trees have not the expected shape.")
+                    n = left_tail_term.children[1]
+                    p = left_tail_term.children[2]
+
+                    right_m = right_head.children[1]
+                    right_p = right_head.children[2]
+
+                    right_tail_term = right_tail.children[4]
+                    right_tail_term_root = right_tail_term.root
+
+                    if right_tail_term_root == "edges" and m == right_m and p == right_p:
+                        if len(right_tail_term.children) != 2:
+                            raise ValueError("Derivation trees have not the expected shape.")
+                        right_n = right_tail_term.children[0]
+                        if n == right_n:
+                            return False
+
+        elif "beside_cons" in left and "before_cons" in right:
+            if len(head.children) != 11 or len(tail.children) != 8:
+                raise ValueError("Derivation trees have not the expected shape.")
+            left_head = head.children[9]
+            left_tail = head.children[10]
+            right_term = tail.children[6]
+
+            left_head_root = left_head.root
+            left_tail_root = left_tail.root
+            right_term_root = right_term.root
+            if left_head_root == "edges" and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
+                if len(left_head.children) != 2 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                    raise ValueError("Derivation trees have not the expected shape.")
+                m = left_head.children[0]
+
+                left_tail_term = left_tail.children[4]
+                right_head = right_term.children[9]
+                right_tail = right_term.children[10]
+
+                left_tail_term_root = left_tail_term.root
+                right_head_root = right_head.root
+                right_tail_root = right_tail.root
+                if left_tail_term_root == "swap" and right_head_root == "swap" and "beside_singleton" in right_tail_root:
+                    if len(left_tail_term.children) != 4 or len(right_head.children) != 4 or len(
+                            right_tail.children) != 5:
+                        raise ValueError("Derivation trees have not the expected shape.")
+                    n = left_tail_term.children[1]
+                    p = left_tail_term.children[2]
+
+                    right_m = right_head.children[1]
+                    right_p = right_head.children[2]
+
+                    right_tail_term = right_tail.children[4]
+                    right_tail_term_root = right_tail_term.root
+
+                    if right_tail_term_root == "edges" and m == right_m and p == right_p:
+                        if len(right_tail_term.children) != 2:
+                            raise ValueError("Derivation trees have not the expected shape.")
+                        right_n = right_tail_term.children[0]
+                        if n == right_n:
+                            return False
         return True
 
 
@@ -215,6 +469,14 @@ class Labeled_DAG_Repository:
         before(besides(copy(m, edge()), swap(n+p, n, p)), besides(swap(m+p, m, p), copy(n,edge())))
         ->
         swap(m + n + p, m+n, p)
+        
+        
+        additionally, we should satisfy the following law:
+        (this should be doable with types, too)
+        
+        beside(swap(n, 0, n), swap(m, 0, m))
+        ->
+        swap(n+m, 0, n+m)
 
         """
 
@@ -415,6 +677,13 @@ class Labeled_DAG_Repository:
                   ''': Constructor("comment"),
 
             #'''
+            # TODO: fix the following combinator to satisfy the following law via types
+            #beside(swap(n, 0, n), swap(m, 0, m))
+            #->
+            #swap(n + m, 0, n + m)
+            # so it should be forbidden, to add an id to an id-vector...right?
+            # no, sadly not. This only forbids this "to the right" of a node, but not to the left :-(
+            # I obviously need a second label like "last", to not compose id twice...
             "beside_cons": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("i1", dimension)
@@ -429,30 +698,30 @@ class Labeled_DAG_Repository:
                                                                   (v["head"][1] == v["i1"] or v["head"][1] is None) and
                                                                   (v["head"][2] == v["o1"] or v["head"][2] is None)))
             .parameter("tail", paratuples, lambda v: [v["ls"][1:]])
-            .suffix((
-                    (Constructor("DAG_component",
-                                       Constructor("input", Var("i1"))
-                                       & Constructor("output", Var("o1"))
-                                       & Constructor("structure", Var("head")))
-                     & Constructor("ID"))
-                    **
-                    (Constructor("DAG_parallel",
-                                       Constructor("input", Var("i2"))
-                                       & Constructor("output", Var("o2"))
-                                       & Constructor("structure", Var("tail")))
-                     & Constructor("ID"))
-                     **
-                     (Constructor("DAG_parallel",
-                                Constructor("input", Var("i"))
-                                & Constructor("input", Literal(None))
-                                & Constructor("output", Var("o"))
-                                & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("ls"))
-                                & Constructor("structure", Literal(None))
-                                )
-                      & Constructor("ID"))
-                     )
-                    &
+            .suffix(#(
+                    #(Constructor("DAG_component",
+                    #                   Constructor("input", Var("i1"))
+                    #                   & Constructor("output", Var("o1"))
+                    #                   & Constructor("structure", Var("head")))
+                    # & Constructor("ID"))
+                    #**
+                    #(Constructor("DAG_parallel",
+                    #                   Constructor("input", Var("i2"))
+                    #                   & Constructor("output", Var("o2"))
+                    #                   & Constructor("structure", Var("tail")))
+                    # & Constructor("ID"))
+                    # **
+                    # (Constructor("DAG_parallel",
+                    #            Constructor("input", Var("i"))
+                    #            & Constructor("input", Literal(None))
+                    #            & Constructor("output", Var("o"))
+                    #            & Constructor("output", Literal(None))
+                    #            & Constructor("structure", Var("ls"))
+                    #            & Constructor("structure", Literal(None))
+                    #            )
+                    #  & Constructor("ID"))
+                    # )
+                    #&
                     ((Constructor("DAG_component",
                                        Constructor("input", Var("i1"))
                                        & Constructor("output", Var("o1"))
@@ -762,7 +1031,7 @@ class Labeled_DAG_Repository:
         }
 
 if __name__ == "__main__":
-    repo = Labeled_DAG_Repository(labels=["A", "B"], dimensions=range(1,4))
+    repo = Labeled_DAG_Repository(labels=["A", "B"], dimensions=range(1,6))
 
     io_labels = repo.Para(["A", "B"], range(1, 4))
 
@@ -1063,8 +1332,122 @@ if __name__ == "__main__":
                                 ((("swap", None, None), None, None),))
                            )))
 
+    # TODO: test this with the debugger running
+    def target45(m, n, p, q):
+        return Constructor("DAG",
+                           Constructor("input", Literal(m + n))
+                           & Constructor("output", Literal(p + q))
+                           & Constructor("structure", Literal(
+                               (((("swap", m, n), m+n, m+n),), (("A", n, p), ("B", m, q)),
+                                ((("swap", p, q), p+q, p+q),), (("A", p+q, p+q),))
+                           )))
+
+
+    """
+        test swaplaw2 - predicate:
+        terms of structure
+        before(besides(swap(m+n, m, n), copy(p,edge())), besides(copy(n, edge()), swap(m+p, m, p)))
+        should be False, everything else True
+        """
+
+    """
+    test the following law
+    beside(swap(n, 0, n), swap(m, 0, m))
+    ->
+    swap(n + m, 0, n + m)
+    """
+    target46 = Constructor("DAG",
+                           Constructor("input", Literal(None))
+                           & Constructor("output", Literal(None))
+                           & Constructor("structure", Literal(
+                               ((("A", None, None), (("swap", 0, None), None, None), (("swap", 0, None), None, None), ("A", None, None)),)
+                           )))
+
+    """
+            test swaplaw2 - predicate:
+            terms of structure
+            before(besides(swap(m+n, m, n), copy(p,edge())), besides(copy(n, edge()), swap(m+p, m, p)))
+            should be False, everything else True
+            """
+    def target47(m, n, p):
+        return Constructor("DAG",
+                           Constructor("input", Literal(m + n + p))
+                           & Constructor("output", Literal(m + n + p))
+                           & Constructor("structure", Literal(
+                               (((("swap", m, n), m+n, m+n), (("swap", 0, p), p, p)), ((("swap", 0, n), n, n), (("swap", m, p), m+p, m+p)),)
+                           )))
+
+    def target48(m, n, p):
+        return Constructor("DAG",
+                           Constructor("input", Literal(m + n + p))
+                           & Constructor("output", Literal(m + n + p))
+                           & Constructor("structure", Literal(
+                               (((("swap", m, n), m+n, m+n), (("swap", 0, p), p, p)), ((("swap", 0, n), n, n), (("swap", m, p), m+p, m+p)), (("A", m+n+p, m+n+p),))
+                           )))
+
+
+    """
+    test swaplaw3 - predicate:
+    terms of structure
+    before(swap(m+n, m, n), swap(n+m, n, m))
+    should be False, everything else True
+    """
+
+    def target49(m, n):
+        return Constructor("DAG",
+                           Constructor("input", Literal(m + n))
+                           & Constructor("output", Literal(m + n))
+                           & Constructor("structure", Literal(
+                               (((("swap", m, n), m + n, m + n),), ((("swap", n, m), m + n, m + n),))
+                           )))
+
+    def target50(m, n):
+        return Constructor("DAG",
+                           Constructor("input", Literal(m + n))
+                           & Constructor("output", Literal(m + n))
+                           & Constructor("structure", Literal(
+                               (((("swap", m, n), m + n, m + n),), ((("swap", n, m), m + n, m + n),), (("A", m+n, m+n),))
+                           )))
+
+    target51 = Constructor("DAG",
+                           Constructor("input", Literal(None))
+                           & Constructor("output", Literal(None))
+                           & Constructor("structure", Literal(
+                               (((("swap", None, None), None, None),), ((("swap", None, None), None, None),))
+                           )))
+
+    target52 = Constructor("DAG",
+                           Constructor("input", Literal(None))
+                           & Constructor("output", Literal(None))
+                           & Constructor("structure", Literal(
+                               (((("swap", None, None), None, None),), ((("swap", None, None), None, None),), (("A", None, None),))
+                           )))
+
+    """
+    test swaplaw3 - predicate:
+    terms of structure
+    before(besides(copy(m, edge()), swap(n+p, n, p)), besides(swap(m+p, m, p), copy(n,edge())))
+    should be False, everything else True
+    """
+
+    def target53(m, n, p):
+        return Constructor("DAG",
+                           Constructor("input", Literal(m + n + p))
+                           & Constructor("output", Literal(m + n + p))
+                           & Constructor("structure", Literal(
+                               (((("swap", 0, m), m, m), (("swap", n, p), n+p, n+p)), ((("swap", m, p), m+p, m+p), (("swap", 0, n), n, n)))
+                           )))
+
+    def target54(m, n, p):
+        return Constructor("DAG",
+                           Constructor("input", Literal(m + n + p))
+                           & Constructor("output", Literal(m + n + p))
+                           & Constructor("structure", Literal(
+                               (((("swap", 0, m), m, m), (("swap", n, p), n+p, n+p)), ((("swap", m, p), m+p, m+p), (("swap", 0, n), n, n)), (("A", m + n + p, m + n + p),))
+                           )))
+
     #"""
-    target = target44
+    target = target54(2, 2, 1)
 
     print(target)
 
@@ -1077,7 +1460,7 @@ if __name__ == "__main__":
 
     for t in terms:
         print(t)
-        print(repo.swaplaw1(t.children[6], t.children[7]))
+        print(repo.swaplaw4(t.children[6], t.children[7]))
    # """
 """
     rs = []
