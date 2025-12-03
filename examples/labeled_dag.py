@@ -3,6 +3,9 @@ from src.cl3s import SpecificationBuilder, Constructor, Literal, Var, SearchSpac
 
 from typing import Any
 
+import networkx as nx
+
+
 class Labeled_DAG_Repository:
     def __init__(self, labels, dimensions):
         # additionally to labeled nodes, we have (unlabelled) edges, that needs to be handled additionally
@@ -668,14 +671,6 @@ class Labeled_DAG_Repository:
                   & Constructor("non_ID")),
                   ''': Constructor("comment"),
 
-            #'''
-            # TODO: fix the following combinator to satisfy the following law via types
-            #beside(swap(n, 0, n), swap(m, 0, m))
-            #->
-            #swap(n + m, 0, n + m)
-            # so it should be forbidden, to add an id to an id-vector...right?
-            # no, sadly not. This only forbids this "to the right" of a node, but not to the left :-(
-            # I obviously need a second label like "last", to not compose id twice...
             "beside_cons": SpecificationBuilder()
             .parameter("i", dimension)
             .parameter("i1", dimension)
@@ -1025,6 +1020,40 @@ class Labeled_DAG_Repository:
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
                                 & Constructor("structure", Var("ls")))),
+        }
+
+    def pretty_term_algebra(self):
+        return {
+            "edges": (lambda io, para: f"edges({io})"),
+
+            "swap": (lambda io, n, m, para: f"swap({io}, {n}, {m})"),
+
+            "node": (lambda l, i, o, para: f"node({l}, {i}, {o})"),
+
+            "beside_singleton": (lambda i, o, ls, para, x: f"{x})"),
+
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: f"{x} || {y}"),
+
+            "before_singleton": (lambda i, o, ls, ls1, x: f"({x}"),
+
+            "before_cons": (lambda i, j, o, ls, head, tail, x, y: f"({x} ; {y}"),
+        }
+
+    def path_algebra(self):
+        return {
+            "edges": (lambda io, para: lambda id, inputs: ([], inputs)),
+
+            "swap": (lambda io, n, m, para: lambda id, inputs: ([], inputs[n:] + inputs[:n])),
+
+            "node": (lambda l, i, o, para: lambda id, inputs: ([(x,l + str(id)) for x in inputs],  [l + str(id) for _ in range(0,o)])),
+
+            "beside_singleton": (lambda i, o, ls, para, x: x),
+
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: lambda id, inputs: (x(id, inputs[:i1])[0] + y(id + 1, inputs[i1:])[0], x(id, inputs[:i1])[1] + y(id + 1, inputs[i1:])[1])),
+
+            "before_singleton": (lambda i, o, ls, ls1, x: x),
+
+            "before_cons": (lambda i, j, o, ls, head, tail, x, y: lambda id, inputs: (y(id + 1, x(id, inputs)[1])[0] + x(id, inputs)[0], y(id + 1, x(id,inputs)[1])[1])),
         }
 
 if __name__ == "__main__":
@@ -1450,8 +1479,15 @@ if __name__ == "__main__":
                                ((None,), None, None, (None,))
                            )))
 
+    target101 = Constructor("DAG",
+                            Constructor("input", Literal(1))
+                            & Constructor("output", Literal(1))
+                            & Constructor("structure", Literal(
+                                ((None,), (None, None), (None, None), (None,))
+                            )))
+
     #"""
-    target = target100
+    target = target101
 
     print(target)
 
@@ -1461,10 +1497,22 @@ if __name__ == "__main__":
     #    print(r)
 
 
-    terms = search_space.enumerate_trees(target, 1000000)
+    terms = search_space.enumerate_trees(target, 10)
     print("finish synthesis, start enumerate")
-    test = list(terms)
-    print(f"Found {len(test)} terms.")
+
+    #test = list(terms)
+    #print(f"Found {len(test)} terms.")
+
+    for t in terms:
+        print(t.interpret(repo.pretty_term_algebra()))
+        f = t.interpret(repo.path_algebra())
+        edgelist, to_outputs = f(0, ["input", "input"])
+        edgelist = edgelist + [(o, "output") for o in to_outputs]
+        print(edgelist)
+        DG = nx.DiGraph(edgelist)
+        print(DG.adj)
+
+
 
    # """
 """
