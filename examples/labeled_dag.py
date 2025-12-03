@@ -967,7 +967,8 @@ class Labeled_DAG_Repository:
             .parameter("ls", paratupletuples)
             .parameter_constraint(lambda v: v["ls"] is not None and len(v["ls"]) > 1)
             .parameter("head", paratuples, lambda v: [v["ls"][0]])
-            .parameter_constraint(lambda v: (
+            .parameter_constraint(lambda v: v["head"] is None or
+                                            (
                                                 (v["i"] == sum([t[1] for t in v["head"]])
                                                  if None not in [t for t in v["head"]]
                                                     and None not in [t[1] for t in v["head"]]
@@ -978,7 +979,7 @@ class Labeled_DAG_Repository:
                                                         and None not in [t[2] for t in v["head"]]
                                                      else v["j"] > sum([t[2] for t in v["head"]
                                                                         if t is not None and t[2] is not None]))
-                                             )
+                                            )
                                   )
             .parameter("tail", paratupletuples, lambda v: [v["ls"][1:]])
             .parameter_constraint(lambda v: v["tail"] is None or
@@ -1442,8 +1443,15 @@ if __name__ == "__main__":
                                (((("swap", 0, m), m, m), (("swap", n, p), n+p, n+p)), ((("swap", m, p), m+p, m+p), (("swap", 0, n), n, n)), (("A", m + n + p, m + n + p),))
                            )))
 
+    target100 = Constructor("DAG",
+                           Constructor("input", Literal(1))
+                           & Constructor("output", Literal(1))
+                           & Constructor("structure", Literal(
+                               ((None,), None, None, (None,))
+                           )))
+
     #"""
-    target = target42
+    target = target100
 
     print(target)
 
