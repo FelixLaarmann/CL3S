@@ -4,6 +4,7 @@ from src.cl3s import SpecificationBuilder, Constructor, Literal, Var, SearchSpac
 from typing import Any
 
 import networkx as nx
+import matplotlib.pyplot as plt
 
 
 class Labeled_DAG_Repository:
@@ -1497,7 +1498,7 @@ if __name__ == "__main__":
     #    print(r)
 
 
-    terms = search_space.enumerate_trees(target, 10)
+    terms = search_space.enumerate_trees(target, 1)
     print("finish synthesis, start enumerate")
 
     #test = list(terms)
@@ -1509,10 +1510,27 @@ if __name__ == "__main__":
         edgelist, to_outputs = f(0, ["input", "input"])
         edgelist = edgelist + [(o, "output") for o in to_outputs]
         print(edgelist)
-        DG = nx.DiGraph(edgelist)
-        print(DG.adj)
+        G = nx.DiGraph(edgelist)
 
+        options = {
+            'node_color': 'white',
+            'node_size': 2000,
+            'width': 2,
+            'with_labels': True,
+            'font_weight': 'bold',
+        }
 
+        #subax2 = plt.subplot(221)
+        plt.figure(figsize=(10, 10))
+        pos_G = nx.bfs_layout(G, "input")
+        #print(pos_G)
+        nx.draw(G, pos=pos_G, label=t.interpret(repo.pretty_term_algebra()), **options)
+        #subax3 = plt.subplot(221)
+        #nx.draw_spectral(G, **options)
+        #subax4 = plt.subplot(223)
+        #nx.draw_kamada_kawai(G, **options)
+        plt.legend(loc="lower left", fontsize='large')
+        plt.show()
 
    # """
 """
