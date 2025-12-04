@@ -6,6 +6,8 @@ from typing import Any
 import networkx as nx
 import matplotlib.pyplot as plt
 
+from itertools import accumulate
+
 
 class Labeled_DAG_Repository:
     def __init__(self, labels, dimensions):
@@ -14,6 +16,7 @@ class Labeled_DAG_Repository:
             raise ValueError("Label 'swap' is reserved and cannot be used as a node label.")
         self.labels = labels
         self.dimensions = dimensions
+        self.id_seed = 0
 
     class Para(Group):
         name = "Para"
@@ -1040,6 +1043,12 @@ class Labeled_DAG_Repository:
             "before_cons": (lambda i, j, o, ls, head, tail, x, y: f"({x} ; {y}"),
         }
 
+    def unique_id(self):
+        id = self.id_seed
+        self.id_seed += 1
+        return id
+
+
     def path_algebra(self):
         return {
             "edges": (lambda io, para: lambda id, inputs: ([], inputs)),
@@ -1050,11 +1059,11 @@ class Labeled_DAG_Repository:
 
             "beside_singleton": (lambda i, o, ls, para, x: x),
 
-            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: lambda id, inputs: (x(id, inputs[:i1])[0] + y(id + 1, inputs[i1:])[0], x(id, inputs[:i1])[1] + y(id + 1, inputs[i1:])[1])),
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: lambda id, inputs: (x(id, inputs[:i1])[0] + y((id[0], id[1] + 1), inputs[i1:])[0], x(id, inputs[:i1])[1] + y((id[0], id[1] + 1), inputs[i1:])[1])),
 
             "before_singleton": (lambda i, o, ls, ls1, x: x),
 
-            "before_cons": (lambda i, j, o, ls, head, tail, x, y: lambda id, inputs: (y(id + 1, x(id, inputs)[1])[0] + x(id, inputs)[0], y(id + 1, x(id,inputs)[1])[1])),
+            "before_cons": (lambda i, j, o, ls, head, tail, x, y: lambda id, inputs: (y((id[0] + 1, id[1]), x(id, inputs)[1])[0] + x(id, inputs)[0], y((id[0] + 1, id[1]), x(id, inputs)[1])[1])),
         }
 
 if __name__ == "__main__":
@@ -1507,29 +1516,32 @@ if __name__ == "__main__":
     for t in terms:
         print(t.interpret(repo.pretty_term_algebra()))
         f = t.interpret(repo.path_algebra())
-        edgelist, to_outputs = f(0, ["input", "input"])
+        edgelist, to_outputs = f((0,0), ["input"])
         edgelist = edgelist + [(o, "output") for o in to_outputs]
         print(edgelist)
-        G = nx.DiGraph(edgelist)
+        G = nx.MultiDiGraph()
+        G.add_edges_from(edgelist)
+        print(G.edges)
 
-        options = {
-            'node_color': 'white',
-            'node_size': 2000,
-            'width': 2,
-            'with_labels': True,
-            'font_weight': 'bold',
-        }
+        # Works with arc3 and angle3 connectionstyles
+        connectionstyle = [f"arc3,rad={r}" for r in accumulate([0.3] * 4)]
+        #connectionstyle = [f"angle3,angleA={r}" for r in accumulate([30] * 4)]
 
         #subax2 = plt.subplot(221)
         plt.figure(figsize=(10, 10))
         pos_G = nx.bfs_layout(G, "input")
+        nx.draw_networkx_nodes(G, pos_G, node_size=3000, node_color='lightblue', alpha=0.5, margins=0.05)
+        nx.draw_networkx_labels(G, pos_G, font_size=12, font_weight="bold")
+        nx.draw_networkx_edges(G, pos_G, edge_color="black", connectionstyle=connectionstyle, node_size=3000, width=2)
+        plt.figtext(0.01, 0.02, t.interpret(repo.pretty_term_algebra()), fontsize=14, )
+
         #print(pos_G)
-        nx.draw(G, pos=pos_G, label=t.interpret(repo.pretty_term_algebra()), **options)
+        #nx.draw(G, pos=pos_G, label=t.interpret(repo.pretty_term_algebra()), **options)
         #subax3 = plt.subplot(221)
         #nx.draw_spectral(G, **options)
         #subax4 = plt.subplot(223)
         #nx.draw_kamada_kawai(G, **options)
-        plt.legend(loc="lower left", fontsize='large')
+        #plt.legend(loc="lower left", fontsize='large')
         plt.show()
 
    # """
