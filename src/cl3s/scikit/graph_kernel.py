@@ -84,7 +84,7 @@ class WeisfeilerLehmanKernel(GenericKernelMixin, NormalizedKernelMixin, Kernel, 
             return np.array([[self._f(x, y) for y in Y] for x in X])
             #nxs = [tree.to_indexed_nx_digraph()[0].to_undirected() for tree in X]
             #GS = graph_from_networkx(nxs, node_labels_tag='symbol', edge_labels_tag='argument_type')
-            return wl_kernel.fit_transform(GS)
+            #return wl_kernel.fit_transform(GS)
 
     def is_stationary(self):
         return False

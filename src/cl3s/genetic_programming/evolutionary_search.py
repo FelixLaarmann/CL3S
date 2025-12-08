@@ -1,5 +1,5 @@
 import random
-from copy import deepcopy
+from copy import deepcopy, copy
 
 from typing import Any, Generic, Optional, TypeVar, Union, Generator
 import typing
@@ -82,7 +82,7 @@ class TournamentSelection(EvolutionarySearch[NT, T, G], Generic[NT, T, G]):
         return parent1, parent2
 
     def reproduction(self, fitnesses: dict[DerivationTree[NT, T, G], float]):
-        fit = deepcopy(fitnesses)
+        fit = copy(fitnesses)
         next_generation: set[DerivationTree[NT, T, G]] = set()
         current_generation = list(fit.keys())
         while len(next_generation) < int(self.population_size * self.reproduction_rate):

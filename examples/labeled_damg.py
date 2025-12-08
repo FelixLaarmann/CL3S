@@ -1,5 +1,11 @@
 from src.cl3s import SpecificationBuilder, Constructor, Literal, Var, SearchSpaceSynthesizer, DerivationTree, DataGroup, Group
 
+from src.cl3s.genetic_programming.evolutionary_search import TournamentSelection
+from src.cl3s.scikit.graph_kernel import WeisfeilerLehmanKernel
+from itertools import product
+
+from src.cl3s.scikit.bayesian_optimization import BayesianOptimization
+
 from typing import Any
 
 import networkx as nx
@@ -1171,7 +1177,7 @@ class Labeled_DAMG_Repository:
         }
 
 if __name__ == "__main__":
-    repo = Labeled_DAMG_Repository(labels=["Conv1D", "LinearLayer", "Maxpool1D", "Dropout", "ReLU", "Sigmoid", "BatchNorm1D", "Upsample"], dimensions=range(1, 6))
+    repo = Labeled_DAMG_Repository(labels=["Conv1D", "LinearLayer", "Maxpool1D", "Upsample"], dimensions=range(1, 4))
 
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
@@ -1179,10 +1185,17 @@ if __name__ == "__main__":
                             Constructor("input", Literal(1))
                             & Constructor("output", Literal(1))
                             & Constructor("structure", Literal(
-                                ((None,), (None, None), (None, None), (None,))
+                                ((None,), (None, None), (None, None), (None,), (None,))
                             )))
 
     edge = (("swap", 0, 1), 1, 1)
+
+    target102 = Constructor("DAG",
+                            Constructor("input", Literal(1))
+                            & Constructor("output", Literal(1))
+                            & Constructor("structure", Literal(
+                                ((("Conv1D", 1, 2),), (edge, ("Maxpool1D", 1, 1),), (edge, ("Upsample", 1, 1),), (("Conv1D", 2, 1),), (("LinearLayer", 1, 1),))
+                            )))
 
     target_u_net_like = Constructor("DAG",
                                     Constructor("input", Literal(1))
@@ -1199,38 +1212,66 @@ if __name__ == "__main__":
                                     )))
 
     target_u_net_like_general = Constructor("DAG",
-                                    Constructor("input", Literal(None))
-                                    & Constructor("output", Literal(None))
+                                    Constructor("input", Literal(1))
+                                    & Constructor("output", Literal(1))
                                     & Constructor("structure", Literal(
-                                        ((None,), (edge, ("Maxpool1D", 1, 1),),
-                                         (edge, ("Conv1D", 1, 2),), (edge, edge, ("Maxpool1D", 1, 1),),
-                                         (edge, edge, ("Conv1D", 1, 1),), (edge, edge, ("Upsample", 1, 1),),
-                                         (edge, ("Conv1D", 2, 1),), (edge, ("Upsample", 1, 1),),
-                                         (("Conv1D", 2, 1),),
-                                         (("Conv1D", 1, 1),),
+                                        (None,
+                                         (edge, ("Maxpool1D", None, None),),
+                                         (edge, None,),
+                                         (edge, edge, ("Maxpool1D", None, None),),
+                                         (edge, edge, None,),
+                                         (edge, edge, ("Upsample", None, None),),
+                                         (edge, None,), (edge, ("Upsample", 1, 1),),
+                                         None,
+                                         None,
                                          (("LinearLayer", 1, 1),),
                                          )
                                     )))
 
-    target = target_u_net_like
+    #search_space0 = synthesizer.construct_search_space(target102).prune()
+    #term = list(search_space0.enumerate_trees(target102, 2))[0]
+
+    target = target101
     search_space = synthesizer.construct_search_space(target).prune()
 
-    term = list(search_space.enumerate_trees(target, 10))[0]
+    term = list(search_space.enumerate_trees(target, 2))[0]
+
+    print(search_space.contains_tree(target, term))
+
+    terms = list(search_space.enumerate_trees(target, 10))
+
+    kernel = WeisfeilerLehmanKernel()
+
+    for t in terms:
+        print(kernel._f(term, t))
+
+    def fit(t):
+        return kernel._f(term, t)
+
+    evo_alg = TournamentSelection(search_space, target, fit, population_size=200, reproduction_rate=0.3, generation_limit=50, tournament_size=5, greater_is_better=True)
+
+    print("starting evolutionary search")
+    result = evo_alg.optimize()
+    print("finished evolutionary search")
 
     print(term.interpret(repo.pretty_term_algebra()))
 
-    target = target_u_net_like_general
-    print(target)
+    print(result.interpret(repo.pretty_term_algebra()))
 
-    terms = search_space.enumerate_trees(target, 100)
+    print(kernel._f(term, result))
 
-    for t in terms:
-        print(t.interpret(repo.pretty_term_algebra()))
+    bo = BayesianOptimization(search_space, target)
+    print("starting bayesian optimisation")
+    tree_bo, X, Y = bo.bayesian_optimisation(10, fit, greater_is_better=True, n_pre_samples=100)
+    print("finished bayesian optimisation")
+    print(tree_bo.interpret(repo.pretty_term_algebra()))
+    print(kernel._f(term, tree_bo))
+
+
 
     # for target101 enumeration is about 200000 times faster
 
     #terms = search_space.enumerate_trees(target, 10)
-
 
     """
     for t in terms:
@@ -1257,4 +1298,4 @@ if __name__ == "__main__":
         plt.figtext(0.01, 0.02, t.interpret(repo.pretty_term_algebra()), fontsize=14)
 
         plt.show()
-    """
+        """

@@ -325,7 +325,7 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
         """
         Sample a random tree from the search space.
         """
-        tree = self.sample(1, non_terminal, max_depth)
+        tree = self.sample(1, non_terminal, max_depth=max_depth)
         return tree.pop()  # return the only element in the set
 
 

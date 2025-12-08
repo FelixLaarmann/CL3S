@@ -63,15 +63,15 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
     def to_indexed_nx_digraph(self, start_index: int = 0) -> tuple[nx.DiGraph, dict[int, T]]:
         if self.is_literal:
             G = nx.DiGraph()
-            G.add_node(start_index, symbol=str(self.root), literal=True, type=self.literal_group)
+            G.add_node(start_index, symbol=str(self.root), literal=True, type=str(self.literal_group))
             return G, {start_index: self.root}
         elif not self.children:
             G = nx.DiGraph()
-            G.add_node(start_index, symbol=str(self.root), literal=False, type=self.derived_from)
+            G.add_node(start_index, symbol=str(self.root), literal=False, type=str(self.derived_from))
             return G, {start_index: self.root}
         else:
             G = nx.DiGraph()
-            G.add_node(start_index, symbol=str(self.root), literal=False, type=self.derived_from)
+            G.add_node(start_index, symbol=str(self.root), literal=False, type=str(self.derived_from))
             index_mapping = {start_index: self.root}
             current_index = start_index + 1
             for child in self.children:
