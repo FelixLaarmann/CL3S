@@ -554,10 +554,8 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
         stack: deque[tuple | Callable] = deque([(start, tree)])
         results: deque[bool] = deque()
 
-        def get_inputs(count: int) -> Generator[bool]:
-            for _ in range(count):
-                yield results.pop()
-            return
+        def get_inputs(count: int) -> list[bool]:
+            return [results.pop() for _ in range(count)]
 
         while stack:
             task = stack.pop()
@@ -612,4 +610,5 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
             elif isinstance(task, FunctionType):
                 # task is a function to execute
                 task()
-        return any(results)
+        assert len(results) == 1
+        return results.pop()

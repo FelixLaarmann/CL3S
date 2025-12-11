@@ -1177,7 +1177,7 @@ class Labeled_DAMG_Repository:
         }
 
 if __name__ == "__main__":
-    repo = Labeled_DAMG_Repository(labels=["Conv1D", "LinearLayer", "Maxpool1D", "Upsample"], dimensions=range(1, 4))
+    repo = Labeled_DAMG_Repository(labels=["Conv1D", "LinearLayer", "Maxpool1D", "Upsample"], dimensions=range(1, 6))
 
     synthesizer = SearchSpaceSynthesizer(repo.specification(), {})
 
@@ -1236,19 +1236,17 @@ if __name__ == "__main__":
 
     term = list(search_space.enumerate_trees(target, 2))[0]
 
-    print(search_space.contains_tree(target, term))
-
     terms = list(search_space.enumerate_trees(target, 10))
 
     kernel = WeisfeilerLehmanKernel()
 
-    for t in terms:
-        print(kernel._f(term, t))
-
     def fit(t):
         return kernel._f(term, t)
 
-    evo_alg = TournamentSelection(search_space, target, fit, population_size=200, reproduction_rate=0.3, generation_limit=50, tournament_size=5, greater_is_better=True)
+    for t in terms:
+        print(fit(t))
+
+    evo_alg = TournamentSelection(search_space, target, fit, population_size=200, crossover_rate=0.8, mutation_rate=0.02, generation_limit=100, tournament_size=5, greater_is_better=True, enforce_diversity=True, elitism=3)
 
     print("starting evolutionary search")
     result = evo_alg.optimize()
@@ -1260,13 +1258,14 @@ if __name__ == "__main__":
 
     print(kernel._f(term, result))
 
+    """
     bo = BayesianOptimization(search_space, target)
     print("starting bayesian optimisation")
     tree_bo, X, Y = bo.bayesian_optimisation(10, fit, greater_is_better=True, n_pre_samples=100)
     print("finished bayesian optimisation")
     print(tree_bo.interpret(repo.pretty_term_algebra()))
     print(kernel._f(term, tree_bo))
-
+"""
 
 
     # for target101 enumeration is about 200000 times faster
