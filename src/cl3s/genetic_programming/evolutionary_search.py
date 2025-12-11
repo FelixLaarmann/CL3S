@@ -45,15 +45,17 @@ class EvolutionarySearch(Generic[NT, T, G]):
 
     def optimize(self):
         current_generation = self.initialize_population()
-        fitnesses = {t: self.fitness_function(t) for t in current_generation}
         n = 1
+        test = max(current_generation, key=self.fitness_function)
         while n <= self.generation_limit:
-            # next_generation = self.reproduction(fitnesses)
-            new_fitnesses = self.reproduction(fitnesses)  # {t: self.fitness_function(t) for t in next_generation}
-            if self.check_termination_criteria(fitnesses, new_fitnesses):
+            next_generation = self.reproduction(current_generation)
+            assert (max(current_generation, key=self.fitness_function) in next_generation) if self.elitism > 0 else True
+            if self.check_termination_criteria(current_generation, next_generation):
                 break
-            fitnesses = new_fitnesses
+            current_generation = next_generation
+            assert test in current_generation
             n += 1
+        fitnesses = {t: self.fitness_function(t) for t in current_generation}
         if self.greater_is_better:
             best_tree = max(fitnesses, key=fitnesses.get)
         else:
@@ -72,17 +74,18 @@ class TournamentSelection(EvolutionarySearch[NT, T, G], Generic[NT, T, G]):
         self.enforce_diversity = enforce_diversity
 
     def initialize_population(self):
-        return self.search_space.sample(self.population_size, self.request)
+        return list(self.search_space.enumerate_trees(self.request, self.population_size))
+        #return list(self.search_space.sample(self.population_size, self.request))
 
-    def selection(self, fitnesses: dict[DerivationTree[NT, T, G], float]):
+    def selection(self, generation: list[DerivationTree[NT, T, G]]):
         if self.enforce_diversity:
             selected: set[DerivationTree[NT, T, G]] = set()
             while len(selected) < 2:
-                tournament = random.sample(list(fitnesses.items()), self.tournament_size)
+                tournament = random.sample(generation, self.tournament_size)
                 if self.greater_is_better:
-                    winner = max(tournament, key=lambda x: x[1])[0]
+                    winner = max(tournament, key=self.fitness_function)
                 else:
-                    winner = min(tournament, key=lambda x: x[1])[0]
+                    winner = min(tournament, key=self.fitness_function)
                 selected.add(winner)
             parent1 = selected.pop()
             parent2 = selected.pop()
@@ -90,38 +93,40 @@ class TournamentSelection(EvolutionarySearch[NT, T, G], Generic[NT, T, G]):
         else:
             selected: list[DerivationTree[NT, T, G]] = []
             for _ in range(2):
-                tournament = random.sample(list(fitnesses.items()), self.tournament_size)
+                tournament = random.sample(generation, self.tournament_size)
                 if self.greater_is_better:
-                    winner = max(tournament, key=lambda x: x[1])[0]
+                    winner = max(tournament, key=self.fitness_function)
                 else:
-                    winner = min(tournament, key=lambda x: x[1])[0]
+                    winner = min(tournament, key=self.fitness_function)
                 selected.append(winner)
             parent1 = selected.pop()
             parent2 = selected.pop()
             return parent1, parent2
 
-    def reproduction(self, fitnesses: dict[DerivationTree[NT, T, G], float]):
-        fit = copy(fitnesses)
+    def reproduction(self, current_generation: list[DerivationTree[NT, T, G]]):
+        fit = {t: self.fitness_function(t) for t in current_generation}
+        elite = sorted(fit.items(), key=lambda x: x[1], reverse=self.greater_is_better)[:self.elitism]
         if self.enforce_diversity:
             next_generation: set[DerivationTree[NT, T, G]] = set()
-            current_generation = list(fit.keys())
-            # elitism
-            elite = sorted(fit.items(), key=lambda x: x[1], reverse=self.greater_is_better)[:self.elitism]
+            # elitism: carry over the best individuals
             for e in elite:
                 next_generation.add(e[0])  # invariant diversity: there are no duplicates in population
             while len(next_generation) < int(self.population_size):
-                parent1, parent2 = self.selection(fit)
+                parent1, parent2 = self.selection(current_generation)
                 cx = nrandom.choice([True, False], p=[self.crossover_rate, 1 - self.crossover_rate], size=1).item()
                 assert isinstance(cx, bool)
                 if cx:
                     child = parent1.crossover(parent2, self.search_space)
                     while child is None:
-                        parent1, parent2 = self.selection(fit)  # if parents are impotent... TODO: is this possible for crossover?
+                        #parent1, parent2 = self.selection(current_generation)  # if parents are impotent... TODO: is this possible for crossover?
                         child = parent1.crossover(parent2, self.search_space)
                     mt = nrandom.choice([True, False], p=[self.mutation_rate, 1 - self.mutation_rate], size=1).item()
                     assert isinstance(mt, bool)
                     if mt:
-                        child = child.mutate(self.search_space)
+                        child2 = child.mutate(self.search_space)
+                        while child2 is None:
+                            child2 = child.mutate(self.search_space)
+                        child = child2
                     if child not in current_generation:
                         next_generation.add(child)
                 else:
@@ -129,7 +134,11 @@ class TournamentSelection(EvolutionarySearch[NT, T, G], Generic[NT, T, G]):
                     assert isinstance(mt, bool)
                     if mt:
                         mutant1 = parent1.mutate(self.search_space)
+                        while mutant1 is None:
+                            mutant1 = parent1.mutate(self.search_space)
                         mutant2 = parent2.mutate(self.search_space)
+                        while mutant2 is None:
+                            mutant2 = parent2.mutate(self.search_space)
                         if mutant1 not in current_generation:
                                 next_generation.add(mutant1)
                         if len(next_generation) < int(self.population_size):
@@ -141,51 +150,60 @@ class TournamentSelection(EvolutionarySearch[NT, T, G], Generic[NT, T, G]):
                         if len(next_generation) < int(self.population_size):
                             next_generation.add(parent2)
         else:
-            next_generation: list[DerivationTree[NT, T, G]] = []
-            while len(next_generation) < int(self.population_size - self.elitism):
-                parent1, parent2 = self.selection(fit)
+            # elitism: carry over the best individuals
+            next_generation: list[DerivationTree[NT, T, G]] = list(map(lambda x: x[0], elite))
+            assert all([e in next_generation for e, _ in elite])
+            while len(next_generation) < int(self.population_size):
+                parent1, parent2 = self.selection(current_generation)
                 cx = nrandom.choice([True, False], p=[self.crossover_rate, 1 - self.crossover_rate], size=1).item()
                 assert isinstance(cx, bool)
                 if cx:
                     child = parent1.crossover(parent2, self.search_space)
                     while child is None:
-                        parent1, parent2 = self.selection(fit)  # if parents are impotent... TODO: is this possible for crossover?
+                        #parent1, parent2 = self.selection(fit)  # if parents are impotent... TODO: is this possible for crossover?
                         child = parent1.crossover(parent2, self.search_space)
                     mt = nrandom.choice([True, False], p=[self.mutation_rate, 1 - self.mutation_rate], size=1).item()
                     assert isinstance(mt, bool)
                     if mt:
-                        child = child.mutate(self.search_space)
+                        child2 = child.mutate(self.search_space)
+                        while child2 is None:
+                            child2 = child.mutate(self.search_space)
+                        child = child2
                     next_generation.append(child)
                 else:
                     mt = nrandom.choice([True, False], p=[self.mutation_rate, 1 - self.mutation_rate], size=1).item()
                     assert isinstance(mt, bool)
                     if mt:
                         mutant1 = parent1.mutate(self.search_space)
+                        while mutant1 is None:
+                            mutant1 = parent1.mutate(self.search_space)
                         mutant2 = parent2.mutate(self.search_space)
+                        while mutant2 is None:
+                            mutant2 = parent2.mutate(self.search_space)
                         next_generation.append(mutant1)
-                        if len(next_generation) < int(self.population_size - self.elitism):
+                        if len(next_generation) < int(self.population_size):
                             next_generation.append(mutant2)
                     else:
-                        if len(next_generation) < int(self.population_size - self.elitism):
+                        if len(next_generation) < int(self.population_size):
                                 next_generation.append(parent1)
-                        if len(next_generation) < int(self.population_size - self.elitism):
+                        if len(next_generation) < int(self.population_size):
                                 next_generation.append(parent2)
-            # elitism: carry over the best individuals
-            elite = sorted(fit.items(), key=lambda x: x[1], reverse=self.greater_is_better)[:self.elitism]
-            for e in elite:
-                next_generation.append(e[0])
-        new_fitnesses = {t: self.fitness_function(t) for t in next_generation}
+        assert len(next_generation) == self.population_size
+        #new_fitnesses = {t: self.fitness_function(t) for t in next_generation}
         #result = fit | new_fitnesses
-        return new_fitnesses
+        assert all([e in next_generation for e, _ in elite])
+        return next_generation
 
-    def check_termination_criteria(self, old_fitnesses, new_fitnesses):
-        old_best = max(old_fitnesses.values())
-        new_best = max(new_fitnesses.values())
+    def check_termination_criteria(self, current_generation, next_generation):
+        old_best = max(current_generation, key=self.fitness_function)
+        old_fitness = self.fitness_function(old_best)
+        new_best = max(next_generation, key=self.fitness_function)
+        new_fitness = self.fitness_function(new_best)
         if self.greater_is_better:
-            if new_best <= old_best:
+            if new_fitness <= old_fitness:
                 self.stale_generations += 1
         else:
-            if new_best >= old_best:
+            if new_fitness >= old_fitness:
                 self.stale_generations += 1
         if self.stale_generations >= 5:  # int(self.generation_limit/10 + 1):
             print(f"Termination criteria met: no improvement in fitness for {5} generations.")

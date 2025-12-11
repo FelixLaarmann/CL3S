@@ -1246,7 +1246,7 @@ if __name__ == "__main__":
     for t in terms:
         print(fit(t))
 
-    evo_alg = TournamentSelection(search_space, target, fit, population_size=200, crossover_rate=0.8, mutation_rate=0.02, generation_limit=100, tournament_size=5, greater_is_better=True, enforce_diversity=True, elitism=3)
+    evo_alg = TournamentSelection(search_space, target, fit, population_size=100, crossover_rate=0.8, mutation_rate=0.02, generation_limit=10, tournament_size=3, greater_is_better=True, enforce_diversity=False, elitism=1)
 
     print("starting evolutionary search")
     result = evo_alg.optimize()
