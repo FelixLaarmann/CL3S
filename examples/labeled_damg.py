@@ -809,28 +809,59 @@ class Labeled_DAMG_Repository:
             # (m parallel) edges are swaps with n=0
             "edges": SpecificationBuilder()
             .parameter("io", dimension)
-            .parameter("para", para_labels, lambda v: [(("swap", 0, v["io"]), v["io"], v["io"]),
-                                                       (("swap", 0, None), v["io"], v["io"]),
-                                                       (("swap", None, v["io"]), v["io"], v["io"]),
-                                                       (("swap", None, None), v["io"], v["io"]),
-                                                       (("swap", 0, v["io"]), v["io"], None),
-                                                       (("swap", 0, None), v["io"], None),
-                                                       (("swap", None, v["io"]), v["io"], None),
-                                                       (("swap", None, None), v["io"], None),
-                                                       (("swap", 0, v["io"]), None, v["io"]),
-                                                       (("swap", 0, None), None, v["io"]),
-                                                       (("swap", None, v["io"]), None, v["io"]),
-                                                       (("swap", None, None), None, v["io"]),
-                                                       (("swap", 0, v["io"]), None, None),
-                                                       (("swap", 0, None), None, None),
-                                                       (("swap", None, v["io"]), None, None),
-                                                       (("swap", None, None), None, None), None])
+            #.parameter("para", para_labels, lambda v: [(("swap", 0, v["io"]), v["io"], v["io"]),
+            #                                           (("swap", 0, None), v["io"], v["io"]),
+            #                                           (("swap", None, v["io"]), v["io"], v["io"]),
+            #                                           (("swap", None, None), v["io"], v["io"]),
+            #                                           (("swap", 0, v["io"]), v["io"], None),
+            #                                           (("swap", 0, None), v["io"], None),
+            #                                           (("swap", None, v["io"]), v["io"], None),
+            #                                           (("swap", None, None), v["io"], None),
+            #                                           (("swap", 0, v["io"]), None, v["io"]),
+            #                                           (("swap", 0, None), None, v["io"]),
+            #                                           (("swap", None, v["io"]), None, v["io"]),
+            #                                           (("swap", None, None), None, v["io"]),
+            #                                           (("swap", 0, v["io"]), None, None),
+            #                                           (("swap", 0, None), None, None),
+            #                                           (("swap", None, v["io"]), None, None),
+            #                                           (("swap", None, None), None, None), None])
                                                         # (None, None, None)])
+            .parameter("para1", para_labels, lambda v: [(("swap", 0, v["io"]), v["io"], v["io"])])
+            .parameter("para2", para_labels, lambda v: [(("swap", 0, None), v["io"], v["io"])])
+            .parameter("para3", para_labels, lambda v: [(("swap", None, v["io"]), v["io"], v["io"])])
+            .parameter("para4", para_labels, lambda v: [(("swap", None, None), v["io"], v["io"])])
+            .parameter("para5", para_labels, lambda v: [(("swap", 0, v["io"]), v["io"], None)])
+            .parameter("para6", para_labels, lambda v: [(("swap", 0, None), v["io"], None)])
+            .parameter("para7", para_labels, lambda v: [(("swap", None, v["io"]), v["io"], None)])
+            .parameter("para8", para_labels, lambda v: [(("swap", None, None), v["io"], None)])
+            .parameter("para9", para_labels, lambda v: [(("swap", 0, v["io"]), None, v["io"])])
+            .parameter("para10", para_labels, lambda v: [(("swap", 0, None), None, v["io"])])
+            .parameter("para11", para_labels, lambda v: [(("swap", None, v["io"]), None, v["io"])])
+            .parameter("para12", para_labels, lambda v: [(("swap", None, None), None, v["io"])])
+            .parameter("para13", para_labels, lambda v: [(("swap", 0, v["io"]), None, None)])
+            .parameter("para14", para_labels, lambda v: [(("swap", 0, None), None, None)])
+            .parameter("para15", para_labels, lambda v: [(("swap", None, v["io"]), None, None)])
+            .parameter("para16", para_labels, lambda v: [(("swap", None, None), None, None)])
             .suffix(Constructor("DAG_component", Constructor("input", Var("io"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("io"))
                                 & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para"))
+                                & Constructor("structure", Var("para1"))
+                                & Constructor("structure", Var("para2"))
+                                & Constructor("structure", Var("para3"))
+                                & Constructor("structure", Var("para4"))
+                                & Constructor("structure", Var("para5"))
+                                & Constructor("structure", Var("para6"))
+                                & Constructor("structure", Var("para7"))
+                                & Constructor("structure", Var("para8"))
+                                & Constructor("structure", Var("para9"))
+                                & Constructor("structure", Var("para10"))
+                                & Constructor("structure", Var("para11"))
+                                & Constructor("structure", Var("para12"))
+                                & Constructor("structure", Var("para13"))
+                                & Constructor("structure", Var("para14"))
+                                & Constructor("structure", Var("para15"))
+                                & Constructor("structure", Var("para16"))
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("ID")
                     ),
@@ -839,28 +870,59 @@ class Labeled_DAMG_Repository:
             .parameter("io", dimension)
             .parameter("n", dimension, lambda v: range(1, v["io"]))
             .parameter("m", dimension, lambda v: [v["io"] - v["n"]]) # m > 0
-            .parameter("para", para_labels, lambda v: [(("swap", v["n"], v["m"]), v["io"], v["io"]),
-                                                       (("swap", v["n"], None), v["io"], v["io"]),
-                                                       (("swap", None, v["m"]), v["io"], v["io"]),
-                                                       (("swap", None, None), v["io"], v["io"]),
-                                                       (("swap", v["n"], v["m"]), v["io"], None),
-                                                       (("swap", v["n"], None), v["io"], None),
-                                                       (("swap", None, v["m"]), v["io"], None),
-                                                       (("swap", None, None), v["io"], None),
-                                                       (("swap", v["n"], v["m"]), None, v["io"]),
-                                                       (("swap", v["n"], None), None, v["io"]),
-                                                       (("swap", None, v["m"]), None, v["io"]),
-                                                       (("swap", None, None), None, v["io"]),
-                                                       (("swap", v["n"], v["m"]), None, None),
-                                                       (("swap", v["n"], None), None, None),
-                                                       (("swap", None, v["m"]), None, None),
-                                                       (("swap", None, None), None, None), None])
+            #.parameter("para", para_labels, lambda v: [(("swap", v["n"], v["m"]), v["io"], v["io"]),
+            #                                           (("swap", v["n"], None), v["io"], v["io"]),
+            #                                           (("swap", None, v["m"]), v["io"], v["io"]),
+            #                                           (("swap", None, None), v["io"], v["io"]),
+            #                                           (("swap", v["n"], v["m"]), v["io"], None),
+            #                                           (("swap", v["n"], None), v["io"], None),
+            #                                           (("swap", None, v["m"]), v["io"], None),
+            #                                           (("swap", None, None), v["io"], None),
+            #                                           (("swap", v["n"], v["m"]), None, v["io"]),
+            #                                           (("swap", v["n"], None), None, v["io"]),
+            #                                           (("swap", None, v["m"]), None, v["io"]),
+            #                                           (("swap", None, None), None, v["io"]),
+            #                                           (("swap", v["n"], v["m"]), None, None),
+            #                                           (("swap", v["n"], None), None, None),
+            #                                           (("swap", None, v["m"]), None, None),
+            #                                           (("swap", None, None), None, None), None])
                                                        #(None, None, None)])
+            .parameter("para1", para_labels, lambda v: [(("swap", v["n"], v["m"]), v["io"], v["io"])])
+            .parameter("para2", para_labels, lambda v: [(("swap", v["n"], None), v["io"], v["io"])])
+            .parameter("para3", para_labels, lambda v: [(("swap", None, v["m"]), v["io"], v["io"])])
+            .parameter("para4", para_labels, lambda v: [(("swap", None, None), v["io"], v["io"])])
+            .parameter("para5", para_labels, lambda v: [(("swap", v["n"], v["m"]), v["io"], None)])
+            .parameter("para6", para_labels, lambda v: [(("swap", v["n"], None), v["io"], None)])
+            .parameter("para7", para_labels, lambda v: [(("swap", None, v["m"]), v["io"], None)])
+            .parameter("para8", para_labels, lambda v: [(("swap", None, None), v["io"], None)])
+            .parameter("para9", para_labels, lambda v: [(("swap", v["n"], v["m"]), None, v["io"])])
+            .parameter("para10", para_labels, lambda v: [(("swap", v["n"], None), None, v["io"])])
+            .parameter("para11", para_labels, lambda v: [(("swap", None, v["m"]), None, v["io"])])
+            .parameter("para12", para_labels, lambda v: [(("swap", None, None), None, v["io"])])
+            .parameter("para13", para_labels, lambda v: [(("swap", v["n"], v["m"]), None, None)])
+            .parameter("para14", para_labels, lambda v: [(("swap", v["n"], None), None, None)])
+            .parameter("para15", para_labels, lambda v: [(("swap", None, v["m"]), None, None)])
+            .parameter("para16", para_labels, lambda v: [(("swap", None, None), None, None)])
             .suffix(Constructor("DAG_component", Constructor("input", Var("io"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("io"))
                                 & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para"))
+                                & Constructor("structure", Var("para1"))
+                                & Constructor("structure", Var("para2"))
+                                & Constructor("structure", Var("para3"))
+                                & Constructor("structure", Var("para4"))
+                                & Constructor("structure", Var("para5"))
+                                & Constructor("structure", Var("para6"))
+                                & Constructor("structure", Var("para7"))
+                                & Constructor("structure", Var("para8"))
+                                & Constructor("structure", Var("para9"))
+                                & Constructor("structure", Var("para10"))
+                                & Constructor("structure", Var("para11"))
+                                & Constructor("structure", Var("para12"))
+                                & Constructor("structure", Var("para13"))
+                                & Constructor("structure", Var("para14"))
+                                & Constructor("structure", Var("para15"))
+                                & Constructor("structure", Var("para16"))
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
@@ -868,20 +930,33 @@ class Labeled_DAMG_Repository:
             .parameter("l", labels)
             .parameter("i", dimension)
             .parameter("o", dimension)
-            .parameter("para", para_labels, lambda v: [(v["l"], v["i"], v["o"]),
-                                                       (v["l"], v["i"], None),
-                                                       (v["l"], None, v["o"]),
-                                                       (None, v["i"], v["o"]),
-                                                       (v["l"], None, None),
-                                                       (None, None, v["o"]),
-                                                       (None, v["i"], None), None])
+            #.parameter("para", para_labels, lambda v: [(v["l"], v["i"], v["o"]),
+            #                                           (v["l"], v["i"], None),
+            #                                           (v["l"], None, v["o"]),
+            #                                           (None, v["i"], v["o"]),
+            #                                           (v["l"], None, None),
+            #                                           (None, None, v["o"]),
+            #                                           (None, v["i"], None), None])
                                                        #(None, None, None)])
+            .parameter("para1", para_labels, lambda v: [(v["l"], v["i"], v["o"])])
+            .parameter("para2", para_labels, lambda v: [(v["l"], v["i"], None)])
+            .parameter("para3", para_labels, lambda v: [(v["l"], None, v["o"])])
+            .parameter("para4", para_labels, lambda v: [(None, v["i"], v["o"])])
+            .parameter("para5", para_labels, lambda v: [(v["l"], None, None)])
+            .parameter("para6", para_labels, lambda v: [(None, None, v["o"])])
+            .parameter("para7", para_labels, lambda v: [(None, v["i"], None)])
             .suffix(Constructor("DAG_component",
                                 Constructor("input", Var("i"))
                                 & Constructor("input", Literal(None))
                                 & Constructor("output", Var("o"))
                                 & Constructor("output", Literal(None))
-                                & Constructor("structure", Var("para"))
+                                & Constructor("structure", Var("para1"))
+                                & Constructor("structure", Var("para2"))
+                                & Constructor("structure", Var("para3"))
+                                & Constructor("structure", Var("para4"))
+                                & Constructor("structure", Var("para5"))
+                                & Constructor("structure", Var("para6"))
+                                & Constructor("structure", Var("para7"))
                                 & Constructor("structure", Literal(None))
                                 ) & Constructor("non_ID")
                     ),
@@ -1131,11 +1206,11 @@ class Labeled_DAMG_Repository:
 
     def pretty_term_algebra(self):
         return {
-            "edges": (lambda io, para: f"edges({io})"),
+            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: f"edges({io})"),
 
-            "swap": (lambda io, n, m, para: f"swap({io}, {n}, {m})"),
+            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: f"swap({io}, {n}, {m})"),
 
-            "node": (lambda l, i, o, para: f"node({l}, {i}, {o})"),
+            "node": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"node({l}, {i}, {o})"),
 
             "beside_singleton": (lambda i, o, ls, para, x: f"{x})"),
 
@@ -1154,11 +1229,11 @@ class Labeled_DAMG_Repository:
 
     def edgelist_algebra(self):
         return {
-            "edges": (lambda io, para: lambda id, inputs: ([], inputs, {})),
+            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, inputs: ([], inputs, {})),
 
-            "swap": (lambda io, n, m, para: lambda id, inputs: ([], inputs[n:] + inputs[:n], {})),
+            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, inputs: ([], inputs[n:] + inputs[:n], {})),
 
-            "node": (lambda l, i, o, para: lambda id, inputs: ([(x,l + str(id)) for x in inputs],  [l + str(id) for _ in range(0,o)], {l + str(id) : id})),
+            "node": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: ([(x,l + str(id)) for x in inputs],  [l + str(id) for _ in range(0,o)], {l + str(id) : id})),
 
             "beside_singleton": (lambda i, o, ls, para, x: x),
 
@@ -1185,7 +1260,8 @@ if __name__ == "__main__":
                             Constructor("input", Literal(1))
                             & Constructor("output", Literal(1))
                             & Constructor("structure", Literal(
-                                ((None,), (None, None), (None, None), (None,), (None,))
+                                #((None,), (None, None), (None, None), (None,), (None,))
+                                ((None,), (None, None), (None,))
                             )))
 
     edge = (("swap", 0, 1), 1, 1)
@@ -1236,25 +1312,24 @@ if __name__ == "__main__":
 
     term = list(search_space.enumerate_trees(target, 2))[0]
 
-    terms = list(search_space.enumerate_trees(target, 10))
+    terms = list(search_space.enumerate_trees(target, 1000))
 
     kernel = WeisfeilerLehmanKernel()
 
     def fit(t):
         return kernel._f(term, t)
 
-    for t in terms:
-        print(fit(t))
-
-    evo_alg = TournamentSelection(search_space, target, fit, population_size=100, crossover_rate=0.8, mutation_rate=0.02, generation_limit=10, tournament_size=3, greater_is_better=True, enforce_diversity=False, elitism=1)
+    evo_alg = TournamentSelection(search_space, target, fit, population_size=100, crossover_rate=0.9, mutation_rate=0.3, generation_limit=10, tournament_size=5, greater_is_better=True, enforce_diversity=False, elitism=2)
 
     print("starting evolutionary search")
     result = evo_alg.optimize()
     print("finished evolutionary search")
 
     print(term.interpret(repo.pretty_term_algebra()))
-
+    print(term)
+    print("###################")
     print(result.interpret(repo.pretty_term_algebra()))
+    print(result)
 
     print(kernel._f(term, result))
 

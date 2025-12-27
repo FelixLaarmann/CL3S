@@ -17,8 +17,8 @@ G = TypeVar("G", bound=Hashable)  # type of constants/literal group names
 class EvolutionarySearch(Generic[NT, T, G]):
     def __init__(self, search_space: SearchSpace[NT, T, G], request: NT,
                  fitness_function,
-                 population_size: int=100, crossover_rate: float=0.8, mutation_rate: float= 0.05,
-                 generation_limit: int=100, elitism: int=2,
+                 population_size: int=100, crossover_rate: float=0.8, mutation_rate: float= 0.4,
+                 generation_limit: int=30, elitism: int=1,
                  greater_is_better: bool=False):
         self.search_space = search_space
         self.fitness_function = fitness_function
@@ -206,11 +206,15 @@ class TournamentSelection(EvolutionarySearch[NT, T, G], Generic[NT, T, G]):
         if self.greater_is_better:
             if new_fitness <= old_fitness:
                 self.stale_generations += 1
+            else:
+                self.stale_generations = 0
         else:
             if new_fitness >= old_fitness:
                 self.stale_generations += 1
-        if self.stale_generations >= 5:  # int(self.generation_limit/10 + 1):
-            print(f"Termination criteria met: no improvement in fitness for {5} generations.")
+            else:
+                self.stale_generations = 0
+        if self.stale_generations > int(self.generation_limit/10 + 1):
+            print(f"Termination criteria met: no improvement in fitness for {self.stale_generations} generations.")
             return True
         return False
 
