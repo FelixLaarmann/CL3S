@@ -4,7 +4,11 @@ from src.cl3s.genetic_programming.evolutionary_search import TournamentSelection
 from src.cl3s.scikit.graph_kernel import WeisfeilerLehmanKernel
 from itertools import product
 
+
+import numpy as np
 from src.cl3s.scikit.bayesian_optimization import BayesianOptimization
+from src.cl3s.scikit.acquisition_function import ExpectedImprovement
+from sklearn.gaussian_process import GaussianProcessRegressor
 
 from typing import Any
 
@@ -1212,13 +1216,13 @@ class Labeled_DAMG_Repository:
 
             "node": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: f"node({l}, {i}, {o})"),
 
-            "beside_singleton": (lambda i, o, ls, para, x: f"{x})"),
+            "beside_singleton": (lambda i, o, ls, para, x: f"{x}"),
 
             "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: f"{x} || {y}"),
 
-            "before_singleton": (lambda i, o, r, ls, ls1, x: f"({x}"),
+            "before_singleton": (lambda i, o, r, ls, ls1, x: f"{x}"),
 
-            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: f"({x} ; {y}"),
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: f"{x} ; {y}"),
         }
 
     def unique_id(self):
@@ -1260,8 +1264,8 @@ if __name__ == "__main__":
                             Constructor("input", Literal(1))
                             & Constructor("output", Literal(1))
                             & Constructor("structure", Literal(
-                                ((None,), (None, None), (None, None), (None,), (None,))
-                                #((None,), (None, None), (None,))
+                                #((None,), (None, None), (None, None), (None,), (None,))
+                                ((None,), (None, None), (None,))
                             )))
 
     edge = (("swap", 0, 1), 1, 1)
@@ -1319,7 +1323,8 @@ if __name__ == "__main__":
     def fit(t):
         return kernel._f(term, t)
 
-    evo_alg = TournamentSelection(search_space, target, fit, population_size=100, crossover_rate=0.8, mutation_rate=0.7, generation_limit=10, tournament_size=10, greater_is_better=True, enforce_diversity=False, elitism=1)
+    """
+    evo_alg = TournamentSelection(search_space, target, fit, population_size=200, crossover_rate=0.85, mutation_rate=0.3, generation_limit=40, tournament_size=10, greater_is_better=True, enforce_diversity=False, elitism=1)
 
     print("starting evolutionary search")
     result = evo_alg.optimize()
@@ -1328,46 +1333,79 @@ if __name__ == "__main__":
     print(term.interpret(repo.pretty_term_algebra()))
     print(result.interpret(repo.pretty_term_algebra()))
 
-
     print(kernel._f(term, result))
+    """
 
     """
-    bo = BayesianOptimization(search_space, target)
+    x_list = []
+    y_list = []
+
+    x0 = list(search_space.sample(10, target))
+
+    for tree in x0:
+        x_list.append(tree)
+        y_list.append(fit(tree))
+
+    xp = np.array(x_list)
+    yp = np.array(y_list)
+
+    alpha = 1e-10
+
+    model = GaussianProcessRegressor(kernel=kernel,
+                                     alpha=alpha,
+                                     # n_restarts_optimizer=10,
+                                     optimizer=None,  # we currently need this, to prevent derivation of the kernel
+                                     normalize_y=True)
+
+    print("start fitting")
+
+    model.fit(xp, yp)
+
+    print("finished fitting")
+
+    acquisition_function = ExpectedImprovement(model, True)
+
+    #for x in xp:
+    #    print(x.interpret(repo.pretty_term_algebra()))
+    #    print(fit(x))
+    #    print(acquisition_function(x))
+    #    print("-----")
+
+    test = list(search_space.sample(10, target))
+
+    for x in test:
+        print(x.interpret(repo.pretty_term_algebra()))
+        print(fit(x))
+        print(acquisition_function(x))
+        print("-----")
+
+    print(term.interpret(repo.pretty_term_algebra()))
+
+    evo_alg = TournamentSelection(search_space, target, acquisition_function, population_size=100, crossover_rate=0.85,
+                                  mutation_rate=0.3, generation_limit=40, tournament_size=10, greater_is_better=True,
+                                  enforce_diversity=False, elitism=1)
+
+    print("starting evolutionary search")
+    result = evo_alg.optimize()
+    print("finished evolutionary search")
+
+    print(term.interpret(repo.pretty_term_algebra()))
+    print(result.interpret(repo.pretty_term_algebra()))
+
+    print(kernel._f(term, result))
+        
+    """
+
+
+    #"""
+    bo = BayesianOptimization(search_space, target, population_size=100, crossover_rate=0.85,
+                              mutation_rate=0.6, generation_limit=10, tournament_size=10,
+                              enforce_diversity=False, elitism=1)
     print("starting bayesian optimisation")
-    tree_bo, X, Y = bo.bayesian_optimisation(10, fit, greater_is_better=True, n_pre_samples=100)
+    tree_bo, X, Y = bo.bayesian_optimisation(3, fit, greater_is_better=True, n_pre_samples=50)
     print("finished bayesian optimisation")
     print(tree_bo.interpret(repo.pretty_term_algebra()))
     print(kernel._f(term, tree_bo))
-"""
-
-
-    # for target101 enumeration is about 200000 times faster
-
-    #terms = search_space.enumerate_trees(target, 10)
-
-    """
-    for t in terms:
-        print(t.interpret(repo.pretty_term_algebra()))
-        f, inputs = t.interpret(repo.edgelist_algebra())
-        edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
-        edgelist = edgelist + [(o, "output") for o in to_outputs]
-
-        pos_A = pos_A | {"input": (-5.5, -3.8), "output": (max([x for x, y in pos_A.values()]) + 2.5, -3.8)}
-
-        G = nx.MultiDiGraph()
-        G.add_edges_from(edgelist)
-
-        connectionstyle = [f"arc3,rad={r}" for r in accumulate([0.3] * 4)]
-
-        plt.figure(figsize=(25, 25))
-
-        pos_G = nx.bfs_layout(G, "input")
-        node_size = 3000
-        nx.draw_networkx_nodes(G, pos_A, node_size=node_size, node_color='lightblue', alpha=0.5, margins=0.05)
-        nx.draw_networkx_labels(G, pos_A, font_size=6, font_weight="bold")
-        nx.draw_networkx_edges(G, pos_A, edge_color="black", connectionstyle=connectionstyle, node_size=node_size,
-                               width=2)
-        plt.figtext(0.01, 0.02, t.interpret(repo.pretty_term_algebra()), fontsize=14)
-
-        plt.show()
-        """
+    for x, y in zip(X, Y):
+        print(x.interpret(repo.pretty_term_algebra()), y)
+    #"""

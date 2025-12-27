@@ -23,8 +23,6 @@ class AcquisitionFunction(Generic[NT, T, G]):
         """
         Arguments:
         ----------
-            t: DerivationTree.
-                The derivation tree for which the expected improvement needs to be computed.
             gaussian_process: GaussianProcessRegressor object.
                 Gaussian process trained on previously evaluated DerivationTrees.
             greater_is_better: Boolean.
@@ -50,13 +48,17 @@ class ExpectedImprovement(AcquisitionFunction[NT, T, G]):
 
         scaling_factor = (-1) ** (not self.greater_is_better)
 
+        ei = scaling_factor * (mu + 1.96 * sigma)
+
         # In case sigma equals zero
+        """
         with np.errstate(divide='ignore'):
             Z = scaling_factor * (mu - loss_optimum) / sigma
             ei = scaling_factor * (mu - loss_optimum) * norm.cdf(Z) + sigma * norm.pdf(Z)
-            ei[sigma == 0.0] == 0.0
+            ei[sigma == 0.0] = 0.0
+        """
 
-        return -1 * ei
+        return ei.item()
 
 
 class AcquisitionFunctionOptimization(Generic[NT, T, G]):
@@ -75,10 +77,18 @@ class AcquisitionFunctionOptimization(Generic[NT, T, G]):
 class EvolutionaryAcquisitionFunctionOptimization(AcquisitionFunctionOptimization[NT, T, G]):
 
     def __init__(self, search_space: SearchSpace[NT, T, G], request: NT, acquisition_function: AcquisitionFunction[NT, T, G],
-                 population_size=10, reproduction_rate=0.2, generation_limit=5, greater_is_better: bool = False):
+                 population_size: int = 200, tournament_size: int = 10, crossover_rate: float = 0.8,
+                 mutation_rate: float = 0.3,
+                 generation_limit: int = 50, elitism: int = 1,
+                 greater_is_better: bool = True, enforce_diversity: bool = False):
         super().__init__(search_space, request, acquisition_function, greater_is_better)
-        self.evolutionary_search = TournamentSelection(search_space, request, acquisition_function, population_size,
-                                                       reproduction_rate, generation_limit)
+        self.evolutionary_search = TournamentSelection(search_space, request, acquisition_function,
+                                                       population_size=population_size, crossover_rate=crossover_rate,
+                                                       mutation_rate=mutation_rate, generation_limit=generation_limit,
+                                                       tournament_size=tournament_size,
+                                                       greater_is_better=greater_is_better,
+                                                       enforce_diversity=enforce_diversity, elitism=elitism)
+
 
     def __call__(self):
         return self.evolutionary_search.optimize()
