@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-from functools import partial
-from inspect import Parameter, signature
-from collections import deque
-from collections.abc import Callable, Hashable, Sequence
-from typing import Any, Generic, Optional, TypeVar, Union, Generator
+from collections.abc import Hashable
+from typing import Generic, TypeVar, Union
 import typing
-from dataclasses import dataclass, field
 import random
 import networkx as nx
 import grakel
@@ -271,6 +267,9 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
             subtrees.remove((selected, mutate_at))
             # frozen trees, literals, and trees with no children will not be mutated
             if selected.frozen or selected.is_literal or not selected.children:
+                continue
+            if all([t.is_literal for t in selected.children]):
+                # we treat a combinator that is only applied to literals as a constant and do not mutate it
                 continue
             mutation_point = selected.derived_from
             if mutation_point is None:
