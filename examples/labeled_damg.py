@@ -488,7 +488,7 @@ class Labeled_DAMG_Repository:
             right_head_root = right_head.root
             right_tail_root = right_tail.root
             if (left_term_root == "swap") and "beside_cons" in right_head_root and "before_singleton" in right_tail_root:
-                if len(left_term.children) != 4 or len(right_head.children) != 11 or len(right_tail.children) != 6:
+                if len(left_term.children) != 19 or len(right_head.children) != 11 or len(right_tail.children) != 6:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
@@ -506,14 +506,14 @@ class Labeled_DAMG_Repository:
                     right_swap = right_tail_term.children[4]
                     right_swap_root = right_swap.root
                     if right_swap_root == "swap":
-                        if len(right_swap.children) != 4:
+                        if len(right_swap.children) != 19:
                             raise ValueError("Derivation trees have not the expected shape.")
                         p = right_swap.children[1]
                         q = right_swap.children[2]
                         if m == y_m and n == x_n and p == x_p and q == y_q:
                             return False
             elif (left == "swap") and "beside_cons" in right_head_root and "before_cons" in right_tail_root:
-                if len(left_term.children) != 4 or len(right_head.children) != 11 or len(right_tail.children) != 9:
+                if len(left_term.children) != 19 or len(right_head.children) != 11 or len(right_tail.children) != 9:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
@@ -531,7 +531,7 @@ class Labeled_DAMG_Repository:
                     right_swap = right_tail_head.children[4]
                     right_swap_root = right_swap.root
                     if right_swap_root == "swap":
-                        if len(right_swap.children) != 4:
+                        if len(right_swap.children) != 19:
                             raise ValueError("Derivation trees have not the expected shape.")
                         p = right_swap.children[1]
                         q = right_swap.children[2]
@@ -564,7 +564,7 @@ class Labeled_DAMG_Repository:
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if (left_swap == "swap") and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 4 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 19 or len(left_tail.children) != 5 or len(right_term.children) != 11:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[1]
                 n = left_head.children[2]
@@ -576,7 +576,7 @@ class Labeled_DAMG_Repository:
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_swap == "edges" and right_head_root == "edges" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 2 or len(right_head.children) != 2 or len(right_tail.children) != 5:
+                    if len(left_tail_term.children) != 17 or len(right_head.children) != 17 or len(right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     p = left_tail_term.children[0]
                     right_n = right_head.children[0]
@@ -584,7 +584,7 @@ class Labeled_DAMG_Repository:
                     right_tail_term = right_tail.children[4] # swap(m+p, m, p)
                     right_tail_term_root = right_tail_term.root
                     if (right_tail_term_root == "swap") and n == right_n:
-                        if len(right_tail_term.children) != 4:
+                        if len(right_tail_term.children) != 19:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_m = right_tail_term.children[1]
                         right_p = right_tail_term.children[2]
@@ -601,7 +601,7 @@ class Labeled_DAMG_Repository:
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if (left_swap == "swap") and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 4 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 19 or len(left_tail.children) != 5 or len(right_term.children) != 11:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[1]
                 n = left_head.children[2]
@@ -613,7 +613,7 @@ class Labeled_DAMG_Repository:
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_swap == "edges" and right_head_root == "edges" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 2 or len(right_head.children) != 2 or len(
+                    if len(left_tail_term.children) != 17 or len(right_head.children) != 17 or len(
                             right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     p = left_tail_term.children[0]
@@ -622,7 +622,7 @@ class Labeled_DAMG_Repository:
                     right_tail_term = right_tail.children[4]  # swap(m+p, m, p)
                     right_tail_term_root = right_tail_term.root
                     if right_tail_term_root == "swap" and n == right_n:
-                        if len(right_tail_term.children) != 4:
+                        if len(right_tail_term.children) != 19:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_m = right_tail_term.children[1]
                         right_p = right_tail_term.children[2]
@@ -652,7 +652,7 @@ class Labeled_DAMG_Repository:
             left_term_root = left_term.root
             right_term_root = right_term.root
             if (left_term_root == "swap") and "beside_singleton" in right_term_root:
-                if len(left_term.children) != 4 or len(right_term.children) != 5:
+                if len(left_term.children) != 19 or len(right_term.children) != 5:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
@@ -660,7 +660,7 @@ class Labeled_DAMG_Repository:
                 right_beside = right_term.children[4]
                 right_beside_root = right_beside.root
                 if right_beside_root == "swap" or right_beside_root == "swap":
-                    if len(right_beside.children) != 4:
+                    if len(right_beside.children) != 19:
                         raise ValueError("Derivation trees have not the expected shape.")
                     right_n = right_beside.children[1]
                     right_m = right_beside.children[2]
@@ -676,7 +676,7 @@ class Labeled_DAMG_Repository:
             left_term_root = left_term.root
             right_term_root = right_term.root
             if (left_term_root == "swap") and "beside_singleton" in right_term_root:
-                if len(left_term.children) != 4 or len(right_term.children) != 5:
+                if len(left_term.children) != 19 or len(right_term.children) != 5:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_term.children[1]
                 n = left_term.children[2]
@@ -715,7 +715,7 @@ class Labeled_DAMG_Repository:
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if left_head_root == "edges" and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 2 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 17 or len(left_tail.children) != 5 or len(right_term.children) != 11:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[0]
 
@@ -727,7 +727,7 @@ class Labeled_DAMG_Repository:
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_term_root == "swap" and right_head_root == "swap" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 4 or len(right_head.children) != 4 or len(right_tail.children) != 5:
+                    if len(left_tail_term.children) != 19 or len(right_head.children) != 19 or len(right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     n = left_tail_term.children[1]
                     p = left_tail_term.children[2]
@@ -739,7 +739,7 @@ class Labeled_DAMG_Repository:
                     right_tail_term_root = right_tail_term.root
 
                     if right_tail_term_root == "edges" and m == right_m and p == right_p:
-                        if len(right_tail_term.children) != 2:
+                        if len(right_tail_term.children) != 17:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_n = right_tail_term.children[0]
                         if n == right_n:
@@ -756,7 +756,7 @@ class Labeled_DAMG_Repository:
             left_tail_root = left_tail.root
             right_term_root = right_term.root
             if left_head_root == "edges" and "beside_singleton" in left_tail_root and "beside_cons" in right_term_root:
-                if len(left_head.children) != 2 or len(left_tail.children) != 5 or len(right_term.children) != 11:
+                if len(left_head.children) != 17 or len(left_tail.children) != 5 or len(right_term.children) != 11:
                     raise ValueError("Derivation trees have not the expected shape.")
                 m = left_head.children[0]
 
@@ -768,7 +768,7 @@ class Labeled_DAMG_Repository:
                 right_head_root = right_head.root
                 right_tail_root = right_tail.root
                 if left_tail_term_root == "swap" and right_head_root == "swap" and "beside_singleton" in right_tail_root:
-                    if len(left_tail_term.children) != 4 or len(right_head.children) != 4 or len(
+                    if len(left_tail_term.children) != 19 or len(right_head.children) != 19 or len(
                             right_tail.children) != 5:
                         raise ValueError("Derivation trees have not the expected shape.")
                     n = left_tail_term.children[1]
@@ -781,7 +781,7 @@ class Labeled_DAMG_Repository:
                     right_tail_term_root = right_tail_term.root
 
                     if right_tail_term_root == "edges" and m == right_m and p == right_p:
-                        if len(right_tail_term.children) != 2:
+                        if len(right_tail_term.children) != 17:
                             raise ValueError("Derivation trees have not the expected shape.")
                         right_n = right_tail_term.children[0]
                         if n == right_n:
@@ -1260,8 +1260,8 @@ if __name__ == "__main__":
                             Constructor("input", Literal(1))
                             & Constructor("output", Literal(1))
                             & Constructor("structure", Literal(
-                                #((None,), (None, None), (None, None), (None,), (None,))
-                                ((None,), (None, None), (None,))
+                                ((None,), (None, None), (None, None), (None,), (None,))
+                                #((None,), (None, None), (None,))
                             )))
 
     edge = (("swap", 0, 1), 1, 1)
@@ -1312,24 +1312,22 @@ if __name__ == "__main__":
 
     term = list(search_space.enumerate_trees(target, 2))[0]
 
-    terms = list(search_space.enumerate_trees(target, 1000))
+    #terms = list(search_space.enumerate_trees(target, 10))
 
     kernel = WeisfeilerLehmanKernel()
 
     def fit(t):
         return kernel._f(term, t)
 
-    evo_alg = TournamentSelection(search_space, target, fit, population_size=100, crossover_rate=0.9, mutation_rate=0.3, generation_limit=10, tournament_size=5, greater_is_better=True, enforce_diversity=False, elitism=2)
+    evo_alg = TournamentSelection(search_space, target, fit, population_size=100, crossover_rate=0.8, mutation_rate=0.7, generation_limit=10, tournament_size=10, greater_is_better=True, enforce_diversity=False, elitism=1)
 
     print("starting evolutionary search")
     result = evo_alg.optimize()
     print("finished evolutionary search")
 
     print(term.interpret(repo.pretty_term_algebra()))
-    print(term)
-    print("###################")
     print(result.interpret(repo.pretty_term_algebra()))
-    print(result)
+
 
     print(kernel._f(term, result))
 
