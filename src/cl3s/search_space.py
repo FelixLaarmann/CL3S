@@ -10,8 +10,7 @@ from collections.abc import Callable, Hashable, Sequence, Mapping, Iterable
 from itertools import product
 from queue import PriorityQueue
 
-from typing import Any, Generic, TypeVar, Union, Generator#, override
-import typing
+from typing import Any, Generic, TypeVar, Union
 from types import FunctionType
 
 from cosy.solution_space import SolutionSpace, RHSRule, NonTerminalArgument, ConstantArgument

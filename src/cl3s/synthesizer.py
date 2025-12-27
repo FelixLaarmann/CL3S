@@ -10,7 +10,7 @@ from collections.abc import (
     Mapping,
     Sequence,
 )
-from re import search
+
 from typing import (
     Any,
     Generic,

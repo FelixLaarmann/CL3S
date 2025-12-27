@@ -14,6 +14,8 @@ import networkx as nx
 import grakel
 from grakel.utils import graph_from_networkx
 
+from copy import copy, deepcopy
+
 NT = TypeVar("NT", bound=Hashable) # type of non-terminals
 T = TypeVar("T", bound=Hashable) # type of terminals
 G = TypeVar("G", bound=Hashable)  # type of constants/literal group names
@@ -59,6 +61,17 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
         self.literal_group = literal_group
         self.frozen = frozen
 
+    def __copy__(self) -> "DerivationTree[NT, T, G]":
+        children_copy = tuple(copy(child) for child in self.children)
+        return DerivationTree(
+            root=self.root,
+            children=children_copy,
+            derived_from=self.derived_from,
+            rhs_rule=self.rhs_rule,
+            is_literal=self.is_literal,
+            literal_group=self.literal_group,
+            frozen=self.frozen
+        )
 
     def to_indexed_nx_digraph(self, start_index: int = 0) -> tuple[nx.DiGraph, dict[int, T]]:
         if self.is_literal:
@@ -112,6 +125,7 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
             # if the path is empty, return the subtree
             return subtree
         # create a copy of the current tree
+        """
         new_tree = DerivationTree(
             root=self.root,
             children=self.children,
@@ -121,6 +135,8 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
             literal_group=self.literal_group,
             frozen=self.frozen
         )
+        """
+        new_tree = copy(self)
         # traverse the path to the subtree to replace
         current = new_tree
         for i in path[:-1]:
@@ -128,8 +144,9 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
                 raise ValueError(f"Invalid path.")
             current = current.children[i]
         # replace the subtree at the given path
-        current.children = tuple(current.children[:path[-1]] + (subtree,) + current.children[path[-1] + 1:])
-        return new_tree
+        insert = copy(subtree)
+        current.children = tuple(current.children[:path[-1]] + (insert,) + current.children[path[-1] + 1:])
+        return current
 
     def is_valid_crossover(self, primary_tree: "DerivationTree[NT, T, G]", secondary_tree: "DerivationTree[NT, T, G]",
                            search_space: "SearchSpace[NT, T, G]", max_depth: int | None = None) -> bool:
@@ -142,7 +159,7 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
             for arg, child in zip(rule.arguments, secondary_tree.children):
                 if isinstance(arg, NonTerminalArgument):
                     # if the argument is a non-terminal, check if the derived_from matches
-                    if child.derived_from != arg.origin:  # TODO: subtyping instead of equality?
+                    if child.derived_from != arg.origin:
                         return False
                     substitution[arg.name] = child
             return all(predicate(substitution | secondary_tree.rhs_rule.literal_substitution)
