@@ -196,7 +196,6 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
         """
         # compute all subtrees and their paths, excluding the whole primary derivation tree (self)
         primary_subtrees = list(self.non_literal_subtrees([]))
-        # TODO: this case should not occur
         if (self, []) in primary_subtrees:
             primary_subtrees.remove((self, []))
         # compute all subtrees of the secondary derivation tree, including the secondary derivation tree itself
@@ -220,6 +219,7 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
                     raise ValueError("Selected primary subtree has no literal group. The empty string is not a valid literal group.")
                 #temp_secondary_subtrees = list(filter(lambda x: x[0].literal_group == crossover_point, temp_secondary_subtrees))
                 temp_secondary_subtrees = []
+                # literals are no valid crossover points, therefore we empty the list of secondary subtrees
             else:
                 # else choose its type (non-terminal) as crossover point
                 crossover_point = selected_primary.derived_from

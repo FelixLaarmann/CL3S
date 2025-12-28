@@ -1426,7 +1426,7 @@ if __name__ == "__main__":
 
 
     evo_alg = TournamentSelection(search_space, target, fit0, population_size=100, crossover_rate=0.85,
-                                      mutation_rate=0.3, generation_limit=10, tournament_size=10,
+                                      mutation_rate=0.35, generation_limit=30, tournament_size=10,
                                       greater_is_better=True, enforce_diversity=False, elitism=1)
 
     print("starting evolutionary search")
@@ -1447,9 +1447,10 @@ if __name__ == "__main__":
                                 structure
                             )))
         print(target)
+        print(next_target)
         next_search_space = synthesizer.construct_search_space(next_target).prune()
         next_evo_alg = TournamentSelection(next_search_space, next_target, fit1, population_size=100, crossover_rate=0.85,
-                                      mutation_rate=0.35, generation_limit=20, tournament_size=10,
+                                      mutation_rate=0.4, generation_limit=50, tournament_size=10,
                                       greater_is_better=True, enforce_diversity=False, elitism=1)
         print("starting evolutionary search on detailed kernel")
         next_result = next_evo_alg.optimize()

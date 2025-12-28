@@ -149,7 +149,7 @@ class TournamentSelection(EvolutionarySearch[NT, T, G], Generic[NT, T, G]):
                 if cx:
                     child = parent1.crossover(parent2, self.search_space)
                     while child is None:
-                        parent1, parent2 = self.selection(current_generation)  # if parents are impotent... TODO: is this possible for crossover?
+                        parent1, parent2 = self.selection(current_generation)  # if parents are impotent...
                         child = parent1.crossover(parent2, self.search_space)
                     mt = nrandom.choice([True, False], p=[self.mutation_rate, 1 - self.mutation_rate], size=1).item()
                     if mt:
@@ -157,18 +157,38 @@ class TournamentSelection(EvolutionarySearch[NT, T, G], Generic[NT, T, G]):
                         while child2 is None:
                             child2 = child.mutate(self.search_space)
                         child = child2
+                    if not self.search_space.contains_tree(self.request, child):
+                        raise ValueError("Generated child is not valid in the search space.")
                     next_generation.append(child)
+                    if len(next_generation) < int(self.population_size):
+                        child3 = parent2.crossover(parent1, self.search_space)
+                        while child3 is None:
+                            parent1, parent2 = self.selection(current_generation)  # if parents are impotent...
+                            child3 = parent2.crossover(parent1, self.search_space)
+                        mt2 = nrandom.choice([True, False], p=[self.mutation_rate, 1 - self.mutation_rate], size=1).item()
+                        if mt2:
+                            child4 = child3.mutate(self.search_space)
+                            while child4 is None:
+                                child4 = child3.mutate(self.search_space)
+                            child3 = child4
+                        if not self.search_space.contains_tree(self.request, child3):
+                            raise ValueError("Generated child is not valid in the search space.")
+                        next_generation.append(child3)
                 else:
                     mt = nrandom.choice([True, False], p=[self.mutation_rate, 1 - self.mutation_rate], size=1).item()
                     if mt:
                         mutant1 = parent1.mutate(self.search_space)
                         while mutant1 is None:
                             mutant1 = parent1.mutate(self.search_space)
-                        mutant2 = parent2.mutate(self.search_space)
-                        while mutant2 is None:
-                            mutant2 = parent2.mutate(self.search_space)
+                        if not self.search_space.contains_tree(self.request, mutant1):
+                            raise ValueError("Generated child is not valid in the search space.")
                         next_generation.append(mutant1)
                         if len(next_generation) < int(self.population_size):
+                            mutant2 = parent2.mutate(self.search_space)
+                            while mutant2 is None:
+                                mutant2 = parent2.mutate(self.search_space)
+                            if not self.search_space.contains_tree(self.request, mutant2):
+                                raise ValueError("Generated child is not valid in the search space.")
                             next_generation.append(mutant2)
                     else:
                         if len(next_generation) < int(self.population_size):
