@@ -157,7 +157,7 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
         # replace the subtree at the given path
         insert = copy(subtree)
         current.children = tuple(current.children[:path[-1]] + (insert,) + current.children[path[-1] + 1:])
-        return current
+        return new_tree
 
     def is_valid_crossover(self, primary_tree: "DerivationTree[NT, T, G]", secondary_tree: "DerivationTree[NT, T, G]",
                            search_space: "SearchSpace[NT, T, G]", max_depth: int | None = None) -> bool:
@@ -179,7 +179,8 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
             return False
 
     def is_consistent_with(self, search_space: SearchSpace[NT, T, G]) -> bool:
-        return search_space.contains_tree(self.derived_from, self)
+        test =  search_space.contains_tree(self.derived_from, self)
+        return test
 
     def crossover(self, secondary_derivation_tree: "DerivationTree[NT, T, G]",
                   search_space: "SearchSpace[NT, T, G]", max_depth: int | None = None,
