@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-from functools import partial
-from inspect import Parameter, signature
-from collections import deque
-from collections.abc import Callable, Hashable, Sequence
-from typing import Any, Generic, Optional, TypeVar, Union, Generator
+from collections.abc import Hashable
+from typing import Generic, TypeVar, Union
 import typing
-from dataclasses import dataclass, field
 import random
 import networkx as nx
 import grakel
 from grakel.utils import graph_from_networkx
+
+from copy import copy, deepcopy
 
 NT = TypeVar("NT", bound=Hashable) # type of non-terminals
 T = TypeVar("T", bound=Hashable) # type of terminals
@@ -59,19 +57,30 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
         self.literal_group = literal_group
         self.frozen = frozen
 
+    def __copy__(self) -> "DerivationTree[NT, T, G]":
+        children_copy = tuple(copy(child) for child in self.children)
+        return DerivationTree(
+            root=self.root,
+            children=children_copy,
+            derived_from=self.derived_from,
+            rhs_rule=self.rhs_rule,
+            is_literal=self.is_literal,
+            literal_group=self.literal_group,
+            frozen=self.frozen
+        )
 
     def to_indexed_nx_digraph(self, start_index: int = 0) -> tuple[nx.DiGraph, dict[int, T]]:
         if self.is_literal:
             G = nx.DiGraph()
-            G.add_node(start_index, symbol=str(self.root), literal=True, type=self.literal_group)
+            G.add_node(start_index, symbol=str(self.root), literal=True, type=str(self.literal_group))
             return G, {start_index: self.root}
         elif not self.children:
             G = nx.DiGraph()
-            G.add_node(start_index, symbol=str(self.root), literal=False, type=self.derived_from)
+            G.add_node(start_index, symbol=str(self.root), literal=False, type=str(self.derived_from))
             return G, {start_index: self.root}
         else:
             G = nx.DiGraph()
-            G.add_node(start_index, symbol=str(self.root), literal=False, type=self.derived_from)
+            G.add_node(start_index, symbol=str(self.root), literal=False, type=str(self.derived_from))
             index_mapping = {start_index: self.root}
             current_index = start_index + 1
             for child in self.children:
@@ -101,6 +110,21 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
                 result.append((subtree, child_path))
         return result
 
+    def non_literal_subtrees(self, path: list[int]) -> list[tuple["DerivationTree[NT, T, G]", list[int]]]:
+        """
+        Compute all non-literal subtrees of the tree and their paths including the tree itself.
+        :param path: The path to the current tree.
+        :return: A list of tuples, where each tuple contains a non-literal subtree and its path.
+        """""
+        result = []
+        if not self.is_literal:
+            result.append((self, path))
+        for i, child in enumerate(self.children):
+            # recursively compute the non-literal subtrees of the children
+            for subtree, child_path in child.non_literal_subtrees(path + [i]):
+                result.append((subtree, child_path))
+        return result
+
     def replace(self, path: list[int], subtree: "DerivationTree[NT, T, G]") -> "DerivationTree[NT, T, G]":
         """
         Replace a subtree at the given path with another subtree.
@@ -112,6 +136,7 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
             # if the path is empty, return the subtree
             return subtree
         # create a copy of the current tree
+        """
         new_tree = DerivationTree(
             root=self.root,
             children=self.children,
@@ -121,6 +146,8 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
             literal_group=self.literal_group,
             frozen=self.frozen
         )
+        """
+        new_tree = copy(self)
         # traverse the path to the subtree to replace
         current = new_tree
         for i in path[:-1]:
@@ -128,7 +155,8 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
                 raise ValueError(f"Invalid path.")
             current = current.children[i]
         # replace the subtree at the given path
-        current.children = tuple(current.children[:path[-1]] + (subtree,) + current.children[path[-1] + 1:])
+        insert = copy(subtree)
+        current.children = tuple(current.children[:path[-1]] + (insert,) + current.children[path[-1] + 1:])
         return new_tree
 
     def is_valid_crossover(self, primary_tree: "DerivationTree[NT, T, G]", secondary_tree: "DerivationTree[NT, T, G]",
@@ -142,7 +170,7 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
             for arg, child in zip(rule.arguments, secondary_tree.children):
                 if isinstance(arg, NonTerminalArgument):
                     # if the argument is a non-terminal, check if the derived_from matches
-                    if child.derived_from != arg.origin:  # TODO: subtyping instead of equality?
+                    if child.derived_from != arg.origin:
                         return False
                     substitution[arg.name] = child
             return all(predicate(substitution | secondary_tree.rhs_rule.literal_substitution)
@@ -151,7 +179,8 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
             return False
 
     def is_consistent_with(self, search_space: SearchSpace[NT, T, G]) -> bool:
-        return search_space.contains_tree(self.derived_from, self)
+        test =  search_space.contains_tree(self.derived_from, self)
+        return test
 
     def crossover(self, secondary_derivation_tree: "DerivationTree[NT, T, G]",
                   search_space: "SearchSpace[NT, T, G]", max_depth: int | None = None,
@@ -166,12 +195,12 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
         :return: A new derivation tree that is a member of the search space, or None if no valid crossover could be performed.
         """
         # compute all subtrees and their paths, excluding the whole primary derivation tree (self)
-        primary_subtrees = list(self.subtrees([]))
+        primary_subtrees = list(self.non_literal_subtrees([]))
         # TODO: this case should not occur
         if (self, []) in primary_subtrees:
             primary_subtrees.remove((self, []))
         # compute all subtrees of the secondary derivation tree, including the secondary derivation tree itself
-        secondary_subtrees = list(secondary_derivation_tree.subtrees([]))
+        secondary_subtrees = list(secondary_derivation_tree.non_literal_subtrees([]))
         # choose a random primary subtree as crossover point, until crossover is successful
         while primary_subtrees:
             if seed is not None:
@@ -189,13 +218,14 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
                 crossover_point = selected_primary.literal_group
                 if not crossover_point:
                     raise ValueError("Selected primary subtree has no literal group. The empty string is not a valid literal group.")
-                temp_secondary_subtrees = list(filter(lambda x: x[0].literal_group == crossover_point, temp_secondary_subtrees))
+                #temp_secondary_subtrees = list(filter(lambda x: x[0].literal_group == crossover_point, temp_secondary_subtrees))
+                temp_secondary_subtrees = []
             else:
                 # else choose its type (non-terminal) as crossover point
                 crossover_point = selected_primary.derived_from
                 if crossover_point is None:
                     raise ValueError("Selected primary subtree has no derived_from.")
-                temp_secondary_subtrees = list(filter(lambda x: x[0].derived_from == crossover_point, temp_secondary_subtrees))
+                temp_secondary_subtrees = list(filter(lambda x: x[0].derived_from == crossover_point and x != selected_primary, temp_secondary_subtrees))
             # choose a random secondary subtree that matches the crossover point, until crossover is successful
             while temp_secondary_subtrees:
                 if seed is not None:
@@ -228,7 +258,7 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
         :return: A new derivation tree that is a member of the search space, or None if no valid mutation could be performed.
         """
         # compute all subtrees and their paths
-        subtrees = list(self.subtrees([]))
+        subtrees = list(self.non_literal_subtrees([]))
         # choose a random primary subtree as mutation point, until mutation is successful
         while subtrees:
             if seed is not None:
@@ -238,6 +268,9 @@ class DerivationTree(Tree[T], Generic[NT, T, G]):
             subtrees.remove((selected, mutate_at))
             # frozen trees, literals, and trees with no children will not be mutated
             if selected.frozen or selected.is_literal or not selected.children:
+                continue
+            if all([t.is_literal for t in selected.children]):
+                # we treat a combinator that is only applied to literals as a constant and do not mutate it
                 continue
             mutation_point = selected.derived_from
             if mutation_point is None:

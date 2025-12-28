@@ -2,8 +2,7 @@ from typing import Iterable, Any, Union
 
 from cosy.solution_space import RHSRule, ConstantArgument
 
-from cl3s import DSL, Constructor, Literal, Type, Var, SearchSpaceSynthesizer, DerivationTree
-from collections.abc import Container
+from src.cl3s import SpecificationBuilder, Constructor, Literal, Var, SearchSpaceSynthesizer, DerivationTree, DataGroup, Group
 
 
 class DAMGRepository:
@@ -126,9 +125,14 @@ class DAMGRepository:
         self.dimension: Iterable[int] = range(self.dimension_lower_bound, self.dimension_upper_bound + 1)
 
     # to allow infinite literal groups, we need to define a subclass of Contains for that group
-    class Nat(Container):
+    class Nat(Group):
+        name = "Nat"
+
         def __contains__(self, value: object) -> bool:
             return isinstance(value, int) and value >= 0
+
+        def __iter__(self):
+            return super().__iter__()
 
     def beside_constraints(self, fst_tree: DerivationTree[Any, str, Any], snd_tree: DerivationTree[Any, str, Any]) -> bool:
         """
@@ -330,47 +334,39 @@ class DAMGRepository:
 
         return True
 
-    # Our Delta will contain Booleans as the two elementary set and natural numbers as an infinite set (good for indexing).
-    def base_delta(self) -> dict[str, list[Any]]:
-        return {"nat": self.Nat(),
-                "bool": [True, False]}
-
-    def delta(self) -> dict[str, Any]:
-        return self.base_delta() | {
-            "dimension": self.dimension,
-        }
-
     def gamma(self):
+        nat = self.Nat()
+        dimension = DataGroup("dimension", list(self.dimension))
         return {
             "edge": Constructor("graph",
-                            Constructor("input", Literal(1, "dimension")) &
-                            Constructor("output", Literal(1, "dimension")) &
-                            Constructor("edge_size", Literal(1, "nat")) &
-                            Constructor("vertex_size", Literal(0, "nat"))),
-            "vertex": DSL()
-            .parameter("m", "dimension")
-            .parameter("n", "dimension",
+                            Constructor("input", Literal(1)) &
+                            Constructor("output", Literal(1)) &
+                            Constructor("edge_size", Literal(1)) &
+                            Constructor("vertex_size", Literal(0))),
+            "vertex": SpecificationBuilder()
+            .parameter("m", dimension)
+            .parameter("n", dimension,
                        lambda v: range(max(1, self.dimension_lower_bound), self.dimension_upper_bound + 1)
                        if v["m"] == 0 else range(self.dimension_lower_bound, self.dimension_upper_bound + 1))
-            .parameter("es", "nat", lambda v: [v["m"] + v["n"]])
+            .parameter("es", nat, lambda v: [v["m"] + v["n"]])
             .suffix(Constructor("graph",
                             Constructor("input", Var("m")) &
                             Constructor("output", Var("n")) &
                             Constructor("edge_size", Var("es")) &
-                            Constructor("vertex_size", Literal(1, "nat")))),
-            "beside": DSL() # only parallel composition of graphs with in and out > 0 is allowed, otherwise disconnected graphs would be possible TODO: check paper
-            .parameter("m", "dimension", lambda v: range(max(1, self.dimension_lower_bound), self.dimension_upper_bound + 1))
-            .parameter("n", "dimension", lambda v: range(max(1, self.dimension_lower_bound), self.dimension_upper_bound + 1))
-            .parameter("i", "dimension", lambda v: range(max(1, self.dimension_lower_bound), self.dimension_upper_bound + 1))
-            .parameter("o", "dimension", lambda v: range(max(1, self.dimension_lower_bound), self.dimension_upper_bound + 1))
-            .parameter("p", "dimension", lambda v: [v["i"] - v["m"]])
-            .parameter("q", "dimension", lambda v: [v["o"] - v["n"]])
-            .parameter("es3", "nat")
-            .parameter("es1", "nat", lambda v: range(1, v["es3"] + 1))
-            .parameter("es2", "nat", lambda v: [v["es3"] - v["es1"]])
-            .parameter("vs3", "nat")
-            .parameter("vs1", "nat", lambda v: range(0, v["vs3"] + 1))
-            .parameter("vs2", "nat", lambda v: [v["vs3"] - v["vs1"]])
+                            Constructor("vertex_size", Literal(1)))),
+            "beside": SpecificationBuilder() # only parallel composition of graphs with in and out > 0 is allowed, otherwise disconnected graphs would be possible
+            .parameter("m", dimension, lambda v: range(max(1, self.dimension_lower_bound), self.dimension_upper_bound + 1))
+            .parameter("n", dimension, lambda v: range(max(1, self.dimension_lower_bound), self.dimension_upper_bound + 1))
+            .parameter("i", dimension, lambda v: range(max(1, self.dimension_lower_bound), self.dimension_upper_bound + 1))
+            .parameter("o", dimension, lambda v: range(max(1, self.dimension_lower_bound), self.dimension_upper_bound + 1))
+            .parameter("p", dimension, lambda v: [v["i"] - v["m"]])
+            .parameter("q", dimension, lambda v: [v["o"] - v["n"]])
+            .parameter("es3", nat)
+            .parameter("es1", nat, lambda v: range(1, v["es3"] + 1))
+            .parameter("es2", nat, lambda v: [v["es3"] - v["es1"]])
+            .parameter("vs3", nat)
+            .parameter("vs1", nat, lambda v: range(0, v["vs3"] + 1))
+            .parameter("vs2", nat, lambda v: [v["vs3"] - v["vs1"]])
             .argument("x", Constructor("graph",
                                   Constructor("input", Var("m")) &
                                   Constructor("output", Var("n"))&
@@ -389,17 +385,17 @@ class DAMGRepository:
                             Constructor("output", Var("o")) &
                             Constructor("edge_size", Var("es3")) &
                             Constructor("vertex_size", Var("vs3")))),
-            "before": DSL()
-            .parameter("es3", "nat")
-            .parameter("m", "dimension", lambda v: range(self.dimension_lower_bound, min(v["es3"] - 1, self.dimension_upper_bound + 1)))
-            .parameter("p", "dimension", lambda v: range(self.dimension_lower_bound, min(v["es3"] - v["m"] + 1, self.dimension_upper_bound + 1)))
-            .parameter("n", "dimension",
+            "before": SpecificationBuilder()
+            .parameter("es3", nat)
+            .parameter("m", dimension, lambda v: range(self.dimension_lower_bound, min(v["es3"] - 1, self.dimension_upper_bound + 1)))
+            .parameter("p", dimension, lambda v: range(self.dimension_lower_bound, min(v["es3"] - v["m"] + 1, self.dimension_upper_bound + 1)))
+            .parameter("n", dimension,
                        lambda v: range(max(1, self.dimension_lower_bound), v["es3"] - v["m"] - v["p"] + 1))  # n must be at least 1, otherwise its equal to beside?
-            .parameter("es1", "nat", lambda v: range(v["m"] + v["n"] - 1, v["es3"] - v["p"] + 1)) # m + n - 1 because of edge_size == 1 of edge-combinator, but sum of i and o is 2
-            .parameter("es2", "nat", lambda v: [v["es3"] - v["es1"] + v["n"]])  # TODO: edge size computations is still of, e.g. graph with i & o = 0, v = 2 and e = 3 should have solutions with swap!
-            .parameter("vs3", "nat")
-            .parameter("vs1", "nat", lambda v: range(0, v["vs3"] + 1))
-            .parameter("vs2", "nat", lambda v: [v["vs3"] - v["vs1"]])
+            .parameter("es1", nat, lambda v: range(v["m"] + v["n"] - 1, v["es3"] - v["p"] + 1)) # m + n - 1 because of edge_size == 1 of edge-combinator, but sum of i and o is 2
+            .parameter("es2", nat, lambda v: [v["es3"] - v["es1"] + v["n"]])  # TODO: edge size computations is still of, e.g. graph with i & o = 0, v = 2 and e = 3 should have solutions with swap!
+            .parameter("vs3", nat)
+            .parameter("vs1", nat, lambda v: range(0, v["vs3"] + 1))
+            .parameter("vs2", nat, lambda v: [v["vs3"] - v["vs1"]])
             .argument("x", Constructor("graph",
                                        Constructor("input", Var("m")) &
                                        Constructor("output", Var("n")) &
@@ -418,27 +414,27 @@ class DAMGRepository:
                             Constructor("output", Var("p")) &
                             Constructor("edge_size", Var("es3")) &
                             Constructor("vertex_size", Var("vs3")))),
-            "swap": DSL()
-            .parameter("io", "dimension")
-            .parameter("m", "dimension", lambda v: range(1, v["io"]))  # 0 < m < io, swapping zero connections is neutral
-            .parameter("n", "dimension", lambda v: [v["io"] - v["m"]])
-            .parameter("s", "nat", lambda v: [v["io"]])  # s is io cast from dimension to nat
+            "swap": SpecificationBuilder()
+            .parameter("io", dimension)
+            .parameter("m", dimension, lambda v: range(1, v["io"]))  # 0 < m < io, swapping zero connections is neutral
+            .parameter("n", dimension, lambda v: [v["io"] - v["m"]])
+            .parameter("s", nat, lambda v: [v["io"]])  # s is io cast from dimension to nat
             .suffix(Constructor("graph",
                             Constructor("input", Var("io")) &
                             Constructor("output", Var("io")) &
                             Constructor("edge_size", Var("s")) &
-                            Constructor("vertex_size", Literal(0, "nat")))),  # Constructor("size", Literal(0, "nat")))),
-            "copy": DSL()
-            .parameter("i", "dimension")
-            .parameter("o", "dimension")
-            .parameter("m", "dimension", # copy with m = 1 is just the identity, so we exclude that
+                            Constructor("vertex_size", Literal(0)))),  # Constructor("size", Literal(0, "nat")))),
+            "copy": SpecificationBuilder()
+            .parameter("i", dimension)
+            .parameter("o", dimension)
+            .parameter("m", dimension, # copy with m = 1 is just the identity, so we exclude that
                        lambda v: [x for x in range(2, max(v["i"], v["o"]) + 1) if v["i"] % x == 0 and v["o"] % x == 0])  # m must be a common divisor of i and o
-            .parameter("p", "dimension", lambda v: [v["i"] // v["m"]])
-            .parameter("q", "dimension", lambda v: [v["o"] // v["m"]])
-            .parameter("es2", "nat")
-            .parameter("es1", "nat", lambda v: [x for x in range(0, v["es2"] + 1) if x * v["m"] == v["es2"]])
-            .parameter("vs2", "nat")
-            .parameter("vs1", "nat", lambda v: [x for x in range(0, v["vs2"] + 1) if x * v["m"] == v["vs2"]])
+            .parameter("p", dimension, lambda v: [v["i"] // v["m"]])
+            .parameter("q", dimension, lambda v: [v["o"] // v["m"]])
+            .parameter("es2", nat)
+            .parameter("es1", nat, lambda v: [x for x in range(0, v["es2"] + 1) if x * v["m"] == v["es2"]])
+            .parameter("vs2", nat)
+            .parameter("vs1", nat, lambda v: [x for x in range(0, v["vs2"] + 1) if x * v["m"] == v["vs2"]])
             .argument("x", Constructor("graph",
                                   Constructor("input", Var("p")) &
                                   Constructor("output", Var("q")) &
@@ -457,11 +453,11 @@ if __name__ == "__main__":
 
     repo = DAMGRepository(9, 0)
     target = Constructor("graph",
-                    Constructor("input", Literal(3, "dimension")) &
-                    Constructor("output", Literal(3, "dimension")) &
-                    Constructor("edge_size", Literal(5, "nat")) &
-                    Constructor("vertex_size", Literal(2, "nat")))
-    synthesizer = SearchSpaceSynthesizer(repo.gamma(), repo.delta(), {})
+                    Constructor("input", Literal(3)) &
+                    Constructor("output", Literal(3)) &
+                    Constructor("edge_size", Literal(5)) &
+                    Constructor("vertex_size", Literal(2)))
+    synthesizer = SearchSpaceSynthesizer(repo.gamma(), {})
     search_space = synthesizer.construct_search_space(target).prune()
     trees = search_space.enumerate_trees(target, 100)
     #trees = search_space.sample(3, target)

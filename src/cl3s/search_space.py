@@ -10,8 +10,7 @@ from collections.abc import Callable, Hashable, Sequence, Mapping, Iterable
 from itertools import product
 from queue import PriorityQueue
 
-from typing import Any, Generic, TypeVar, Union, Generator#, override
-import typing
+from typing import Any, Generic, TypeVar, Union
 from types import FunctionType
 
 from cosy.solution_space import SolutionSpace, RHSRule, NonTerminalArgument, ConstantArgument
@@ -151,7 +150,7 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
         _, nt_length = self.annotations()
         return nt_length[start]
 
-    def build_tree(self, nt: NT, cs: int, candidate: RHSRule[NT, T, G]) -> DerivationTree[NT, T, G] | None:
+    def build_tree_annotated(self, nt: NT, cs: int, candidate: RHSRule[NT, T, G]) -> DerivationTree[NT, T, G] | None:
         if not list(candidate.non_terminals):
             if cs + 1 > self.max_tree_depth:
                 return None
@@ -188,7 +187,7 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
                             child_depth = self.max_tree_depth
                         if cs + child_depth <= self.max_tree_depth:
                             new_cs = cs + child_depth
-                            child_tree: DerivationTree[NT, T, G] | None = self.sample_random_term(arg.origin, new_cs)
+                            child_tree: DerivationTree[NT, T, G] | None = self.sample_random_term_annotated(arg.origin, new_cs)
                             if child_tree is not None and arg.name is not None:
                                 children = children + (child_tree,)
                                 substitution[arg.name] = child_tree
@@ -208,7 +207,53 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
                     )
             return None
 
-    def sample_random_term(self, nt: NT, cs: int, lift = False) -> DerivationTree[NT, T, G] | None:
+    def build_tree(self, nt: NT, candidate: RHSRule[NT, T, G]) -> DerivationTree[NT, T, G] | None:
+        if not list(candidate.non_terminals):
+            # rule only derives terminals, therefore arguments has no nonterminals, but to silence the type checker:
+            params: list[G] = [lit for lit in candidate.arguments if isinstance(lit, ConstantArgument)]
+            cands: tuple[DerivationTree[NT, T, G], ...] = tuple(
+                map(lambda p: DerivationTree(p.value, tuple(),
+                                             derived_from=None, rhs_rule=candidate, frozen=False,
+                                             is_literal=True, literal_group=p.origin), params))
+            if all(predicate({}) for predicate in candidate.predicates):
+                return DerivationTree(candidate.terminal, cands, derived_from=nt, rhs_rule=candidate,
+                                      is_literal=False, literal_group=None, frozen=False)
+            else:
+                return None
+        else:
+            # rule derives non-terminals
+            children: tuple[DerivationTree[NT, T, G], ...] = ()
+            substitution: dict[str, DerivationTree[NT, T, G]] = {}
+
+            for a in candidate.arguments:
+                if isinstance(a, NonTerminalArgument):
+                    child_tree = self.sample_random_term(a.origin)
+                    while child_tree is None:
+                        child_tree = self.sample_random_term(a.origin)
+                    if child_tree is not None:
+                        children = children + (child_tree,)
+                        if a.name is not None:
+                            substitution[a.name] = child_tree
+                elif isinstance(a, ConstantArgument):
+                    children = children + (DerivationTree(a.value, tuple(), derived_from=None, rhs_rule=candidate,
+                                       is_literal=True, literal_group=a.origin, frozen=False),)
+                else:
+                    raise ValueError("rule argument is neither NonTerminalArgument nor ConstantArgument")
+
+            if all((predicate(substitution | candidate.literal_substitution) for predicate in candidate.predicates)):
+                return DerivationTree(
+                        candidate.terminal,
+                        children,
+                        derived_from=nt,
+                        rhs_rule=candidate,
+                        is_literal=False,
+                        literal_group=None,
+                        frozen=False
+                    )
+            else:
+                return None
+
+    def sample_random_term_annotated(self, nt: NT, cs: int) -> DerivationTree[NT, T, G] | None:
         applicable: list[tuple[RHSRule[NT, T, G], int]] = []
         #for (lhs, rhs), n in self.rules:
         #    new_cs = cs + n
@@ -222,42 +267,64 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
         while applicable:
             candidate, next_cs = random.choice(applicable)
             applicable.remove((candidate, next_cs))
-            tree = self.build_tree(nt, next_cs, candidate)
+            tree = self.build_tree_annotated(nt, next_cs, candidate)
             if tree is not None:
                 return tree
         return None
 
-    def sample(self, size: int, non_terminal: NT, max_depth: int | None = None, lift = False) -> set[DerivationTree[NT, T, G]]:
+    def sample_random_term(self, nt: NT) -> DerivationTree[NT, T, G] | None:
+        applicable: list[RHSRule[NT, T, G]] = []
+        for lhs, rules in self._rules.items():
+            if lhs == nt:
+                for rhs in rules:
+                    applicable.append(rhs)
+
+        while applicable:
+            candidate = random.choice(applicable)
+            applicable.remove(candidate)
+            tree = self.build_tree(nt, candidate)
+            if tree is not None:
+                return tree
+        return None
+
+
+    def sample(self, size: int, non_terminal: NT, infinite=False, max_depth: int | None = None) -> set[DerivationTree[NT, T, G]]:
         """
         Sample a list of length size of random trees from the search space.
         """
-        self.min_size: int = self.minimum_tree_depth(non_terminal)
-        if max_depth is not None:
-            self.max_tree_depth = max_depth
-        else:
-            self.max_tree_depth = self.min_size + 10000
-        if self.max_tree_depth < self.min_size:
-            raise ValueError(f"max_tree_depth {self.max_tree_depth} is less than minimum tree depth {self.min_size}")
-
         sample: set[DerivationTree[NT, T, G]] = set()
-        # for _ in range(size*10):
-        while len(sample) < size:
-            # this only works for big search spaces and small sample sizes.
-            # If the sample size is near the size of the search space, this might loop for a long time
-            cs = 0
-            term: DerivationTree[NT, T, G] | None = self.sample_random_term(non_terminal, cs, lift)
-            while term is None:
-                term = self.sample_random_term(non_terminal, cs, lift)
-            sample.add(term)
-            # if len(sample) >= size:
-            #    break
+        if not infinite:
+            while len(sample) < size:
+                term: DerivationTree[NT, T, G] | None = self.sample_random_term(non_terminal)
+                while term is None:
+                    term = self.sample_random_term(non_terminal)
+                sample.add(term)
+        else:
+            self.min_size: int = self.minimum_tree_depth(non_terminal)
+            if max_depth is not None:
+                self.max_tree_depth = max_depth
+            else:
+                self.max_tree_depth = self.min_size + 10000
+            if self.max_tree_depth < self.min_size:
+                raise ValueError(f"max_tree_depth {self.max_tree_depth} is less than minimum tree depth {self.min_size}")
+            # for _ in range(size*10):
+            while len(sample) < size:
+                # this only works for big search spaces and small sample sizes.
+                # If the sample size is near the size of the search space, this might loop for a long time
+                cs = 0
+                term: DerivationTree[NT, T, G] | None = self.sample_random_term_annotated(non_terminal, cs)
+                while term is None:
+                    term = self.sample_random_term_annotated(non_terminal, cs)
+                sample.add(term)
+                # if len(sample) >= size:
+                #    break
         return sample
 
     def sample_tree(self, non_terminal: NT, max_depth: int | None = None) -> DerivationTree[NT, T, G]:
         """
         Sample a random tree from the search space.
         """
-        tree = self.sample(1, non_terminal, max_depth)
+        tree = self.sample(1, non_terminal, max_depth=max_depth)
         return tree.pop()  # return the only element in the set
 
 
@@ -486,10 +553,8 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
         stack: deque[tuple | Callable] = deque([(start, tree)])
         results: deque[bool] = deque()
 
-        def get_inputs(count: int) -> Generator[bool]:
-            for _ in range(count):
-                yield results.pop()
-            return
+        def get_inputs(count: int) -> list[bool]:
+            return [results.pop() for _ in range(count)]
 
         while stack:
             task = stack.pop()
@@ -544,4 +609,5 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
             elif isinstance(task, FunctionType):
                 # task is a function to execute
                 task()
+        assert len(results) == 1
         return results.pop()

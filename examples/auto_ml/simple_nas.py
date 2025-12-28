@@ -1,26 +1,12 @@
-import sys
-from typing import Any
 import pandas as pd
 import numpy as np
-
-from math import sin
 
 import torch
 from torch import nn
 
-import networkx as nx
+from src.cl3s import SpecificationBuilder, Constructor, Literal, Var, SearchSpaceSynthesizer, DataGroup
+from src.cl3s.scikit.bayesian_optimization import BayesianOptimization
 
-from gpytorch.likelihoods import GaussianLikelihood
-
-from grakel.kernels import WeisfeilerLehman, VertexHistogram
-from grakel.utils import graph_from_networkx
-
-from cl3s import DSL, Constructor, Literal, Type, Var, SearchSpaceSynthesizer
-from cl3s.scikit.bayesian_optimization import BayesianOptimization
-from cl3s.genetic_programming.evolutionary_search import TournamentSelection
-from sklearn.gaussian_process import GaussianProcessRegressor
-from cl3s.scikit.graph_kernel import WeisfeilerLehmanKernel
-from cl3s.scikit.acquisition_function import ExpectedImprovement
 
 def load_iris(path):
     iris = pd.read_csv(path)
@@ -52,21 +38,17 @@ class Simple_DNN_Repository:
         self.train_dataset = dataset
         self.initial_weights = {}
 
-    def delta(self) -> dict[str, list[Any]]:
-        return {
-            "bool": [True, False],
-            "learning_rate": self.learning_rates,
-            "dimension": self.dimensions,
-            "hidden": list(range(0, self.max_hidden + 1, 1)),
-            "batch_size": self.batch_size,
-            "epochs": self.epochs,
-        }
-
     def gamma(self):
+        dimension = DataGroup("dimension", self.dimensions)
+        bool = DataGroup("bool", [True, False])
+        learning_rate = DataGroup("learning_rate", self.learning_rates)
+        hidden = DataGroup("hidden", list(range(0, self.max_hidden + 1, 1)))
+        batch_size = DataGroup("batch_size", self.batch_size)
+        epochs = DataGroup("epochs", self.epochs)
         return {
-            "Layer": DSL()
-            .parameter("n", "dimension")
-            .parameter("bias", "bool")  # Constructor("Bias", Var("n")))
+            "Layer": SpecificationBuilder()
+            .parameter("n", dimension)
+            .parameter("bias", bool)  # Constructor("Bias", Var("n")))
             .argument("af", Constructor("activation_function"))
             .suffix(Constructor("layer", Var("n"))),
 
@@ -74,23 +56,23 @@ class Simple_DNN_Repository:
             # .parameter("n", "dimension")
             # .suffiy(Constructor("Bias", Var("n"))),
 
-            "Model": DSL()
-            .parameter("in", "dimension")
-            .parameter("out", "dimension")
+            "Model": SpecificationBuilder()
+            .parameter("in", dimension)
+            .parameter("out", dimension)
             .argument("l", Constructor("layer", Var("out")))
             .suffix(
                 Constructor("model",
                             Constructor("input", Var("in"))
                             & Constructor("output", Var("out")))
-                & Constructor("hidden", Literal(0, "hidden"))
+                & Constructor("hidden", Literal(0))
             ),
 
-            "Model_cons": DSL()
-            .parameter("in", "dimension")
-            .parameter("out", "dimension")
-            .parameter("neurons", "dimension")
-            .parameter("n", "hidden")
-            .parameter("m", "hidden", lambda vs: [vs["n"]-1])
+            "Model_cons": SpecificationBuilder()
+            .parameter("in", dimension)
+            .parameter("out", dimension)
+            .parameter("neurons", dimension)
+            .parameter("n", hidden)
+            .parameter("m", hidden, lambda vs: [vs["n"]-1])
             .argument("layer", Constructor("layer", Var("neurons")))
             .argument("model",
                  Constructor("model",
@@ -118,29 +100,29 @@ class Simple_DNN_Repository:
 
             "L1": Constructor("loss_function"),
 
-            "DataLoader": DSL()
-            .parameter("bs", "batch_size")
+            "DataLoader": SpecificationBuilder()
+            .parameter("bs", batch_size)
             .suffix(Constructor("data", Constructor("batch_size", Var("bs")))),
 
             #"Adagrad": DSL()
             #.Use("lr", "learning_rate")
             #.In(Constructor("optimizer", Constructor("learning_rate", LVar("lr")))),
 
-            "Adam": DSL()
-            .parameter("lr", "learning_rate")
+            "Adam": SpecificationBuilder()
+            .parameter("lr", learning_rate)
             .suffix(Constructor("optimizer", Constructor("learning_rate", Var("lr")))),
 
-            "SGD": DSL()
-            .parameter("lr", "learning_rate")
+            "SGD": SpecificationBuilder()
+            .parameter("lr", learning_rate)
             .suffix(Constructor("optimizer", Constructor("learning_rate", Var("lr")))),
 
-            "System": DSL()
-            .parameter("in", "dimension")
-            .parameter("out", "dimension")
-            .parameter("n", "hidden")
-            .parameter("lr", "learning_rate")
-            .parameter("ep", "epochs")
-            .parameter("bs", "batch_size")
+            "System": SpecificationBuilder()
+            .parameter("in", dimension)
+            .parameter("out", dimension)
+            .parameter("n", hidden)
+            .parameter("lr", learning_rate)
+            .parameter("ep", epochs)
+            .parameter("bs", batch_size)
             .argument("data", Constructor("data", Constructor("batch_size", Var("bs"))))
             .argument("m", Constructor("model", Constructor("input", Var("in")) & Constructor("output", Var("out"))) & Constructor("hidden", Var("n")))
             .argument("opt", Constructor("optimizer", Constructor("learning_rate", Var("lr"))))
@@ -230,9 +212,9 @@ class Simple_DNN_Repository:
         return {
             "System": (lambda i, o, n, lr, ep, bs, data, m, opt, l: self.system(data, m, l, opt, bs, ep)),
             "Layer": (lambda n, b, af: (b, af)),
-            "Model": (lambda i, o, l: nn.Sequential(self.linear_layer(i, o, l[0]), nn.Softmax(dim=1))),  # , l[1])),
+            "Model": (lambda i, o, l: nn.Sequential(nn.Linear(i, o, l[0]), nn.Softmax(dim=1))),  # , l[1])),
             "Model_cons": (lambda i, o, neurons, n, m, l, model:
-                           nn.Sequential(self.linear_layer(i, neurons, l[0]), l[1]).extend(model)),
+                           nn.Sequential(nn.Linear(i, neurons, l[0]), l[1]).extend(model)),
             "ReLu": nn.ReLU(),
             "ELU": nn.ELU(),
             "Sigmoid": nn.Sigmoid(),
@@ -251,11 +233,11 @@ y_train_tensor = torch.tensor(train_labels)
 
 dataset = torch.utils.data.TensorDataset(x_train_tensor, y_train_tensor)
 
-repo = Simple_DNN_Repository([0.01, 0.001, 0.0001], [3, 4] + list(range(5, 30, 5)), 5, [4, 8], [100], dataset)
+repo = Simple_DNN_Repository([0.01, 0.001, 0.0001], [3, 4] + list(range(5, 30, 5)), 5, [8], [1000], dataset)
 
 target = (Constructor("system",
-                      Constructor("input_dim", Literal(4, "dimension"))
-                      & Constructor("output_dim", Literal(3, "dimension"))
+                      Constructor("input_dim", Literal(4))
+                      & Constructor("output_dim", Literal(3))
                       )
           #& Constructor("learning_rate", Literal(0.01, "learning_rate"))
           #& Constructor("hidden_layer", Literal(3, "hidden"))
@@ -263,7 +245,7 @@ target = (Constructor("system",
           #& Constructor("batch_size", Literal(8, "batch_size"))
           )
 
-synthesizer = SearchSpaceSynthesizer(repo.gamma(), repo.delta(), {})
+synthesizer = SearchSpaceSynthesizer(repo.gamma(), {})
 
 search_space = synthesizer.construct_search_space(target).prune()
 
@@ -298,6 +280,11 @@ if __name__ == "__main__":
 
     best = search.optimize()
     """
+
+    for t in search_space.enumerate_trees(target, 10):
+        print(t)
+        print(obj_fun(t))
+
     best, xp, yp = optimizer.bayesian_optimisation(5, obj_fun, n_pre_samples=10,
                                                    greater_is_better=True)
     print(best)

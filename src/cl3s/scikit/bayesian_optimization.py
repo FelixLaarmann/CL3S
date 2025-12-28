@@ -3,17 +3,15 @@ import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import GenericKernelMixin
 
-from collections.abc import Callable, Hashable, Sequence
+from collections.abc import Hashable
 
-from typing import Any, Generic, Optional, TypeVar, Union, Generator
-import typing
+from typing import Generic, TypeVar
 
-from cl3s.scikit.graph_kernel import WeisfeilerLehmanKernel
+from src.cl3s.scikit.graph_kernel import WeisfeilerLehmanKernel
 
 from .acquisition_function import ExpectedImprovement, EvolutionaryAcquisitionFunctionOptimization
 
 from ..search_space import SearchSpace
-from ..tree import DerivationTree
 
 NT = TypeVar("NT", bound=Hashable) # type of non-terminals
 T = TypeVar("T", bound=Hashable) # type of terminals
@@ -23,35 +21,30 @@ G = TypeVar("G", bound=Hashable)  # type of constants/literal group names
 class BayesianOptimization(Generic[NT, T, G]):
 
     def __init__(self, search_space: SearchSpace[NT, T, G], request: NT,
-                 kernel: GenericKernelMixin = WeisfeilerLehmanKernel()):
+                 kernel: GenericKernelMixin = WeisfeilerLehmanKernel(),
+                 population_size: int = 200, tournament_size: int = 10, crossover_rate: float = 0.8,
+                 mutation_rate: float = 0.3,
+                 generation_limit: int = 50, elitism: int = 1,
+                 enforce_diversity: bool = False
+                 ):
         self.search_space = search_space
         self.request = request
         self.kernel = kernel
+        self.population_size = population_size
+        self.tournament_size = tournament_size
+        self.crossover_rate = crossover_rate
+        self.mutation_rate = mutation_rate
+        self.generation_limit = generation_limit
+        self.elitism = elitism
+        self.enforce_diversity = enforce_diversity
 
     def bayesian_optimisation(self, n_iters, obj_fun, x0=None,
                               n_pre_samples=10,
                               gp_params=None, alpha=1e-10, greater_is_better: bool = False):
         """ bayesian_optimisation
 
-        Uses Gaussian Processes to optimise the loss function `sample_loss`.
-
-        Arguments:
-        ----------
-            n_iters: integer.
-                Number of iterations to run the search algorithm.
-            sample_loss: function.
-                Function to be optimised.
-            x0: array-like, shape = [n_pre_samples, n_params].
-                Array of initial points to sample the loss function for. If None, randomly
-                samples from the loss function.
-            n_pre_samples: integer.
-                If x0 is None, samples `n_pre_samples` initial points from the loss function.
-            gp_params: dictionary.
-                Dictionary of parameters to pass on to the underlying Gaussian Process.
-            alpha: double.
-                Variance of the error term of the GP.
-            epsilon: double.
-                Precision tolerance for floats.
+        from here: https://github.com/thuijskens/bayesian-optimization
+        ???
         """
 
         x_list = []
@@ -90,13 +83,17 @@ class BayesianOptimization(Generic[NT, T, G]):
             optimizer = EvolutionaryAcquisitionFunctionOptimization(self.search_space,
                                                                     self.request,
                                                                     acquisition_function,
+                                                                    population_size=self.population_size,
+                                                                    crossover_rate=self.crossover_rate,
+                                                                    mutation_rate=self.mutation_rate,
+                                                                    generation_limit=self.generation_limit,
+                                                                    tournament_size=self.tournament_size,
                                                                     greater_is_better=greater_is_better,
-                                                                    population_size=50,
-                                                                    reproduction_rate=0.1,
-                                                                    generation_limit=10)
+                                                                    enforce_diversity=self.enforce_diversity,
+                                                                    elitism=self.elitism)
 
             next_sample = optimizer()
-            print(next_sample in x_list)
+            print(f"next_sample in x_list: {next_sample in x_list}")
 
             # Duplicates will break the GP. In case of a duplicate, we will randomly sample a next query point.
             while next_sample in x_list:
@@ -105,7 +102,8 @@ class BayesianOptimization(Generic[NT, T, G]):
 
             # objective function evaluation for new derivation tree
             cv_score = obj_fun(next_sample)
-            print(cv_score)
+            print(f"acquisition: {acquisition_function(next_sample)}")
+            print(f"cv_score: {cv_score}")
 
             # Update lists
             x_list.append(next_sample)

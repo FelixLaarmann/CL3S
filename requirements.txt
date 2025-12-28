@@ -7,7 +7,7 @@ networkx==3.5
 numpy==1.26.4
 scikit-learn==1.6.1
 scipy==1.12.0
-combinatory-synthesizer @ git+https://github.com/tudo-seal/cosy-draft.git@b58d4c531d277bee31613ac85d077754758200ba
+combinatory-synthesizer @ git+https://github.com/tudo-seal/cosy.git
 mypy==1.15.0
 mypy_extensions==1.1.0
 typing_extensions==4.13.2
@@ -17,3 +17,4 @@ gpytorch # ==1.14
 torch # ==2.6.0
 pandas
 matplotlib
+pytest
