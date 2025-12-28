@@ -93,7 +93,7 @@ class BayesianOptimization(Generic[NT, T, G]):
                                                                     elitism=self.elitism)
 
             next_sample = optimizer()
-            print(next_sample in x_list)
+            print(f"next_sample in x_list: {next_sample in x_list}")
 
             # Duplicates will break the GP. In case of a duplicate, we will randomly sample a next query point.
             while next_sample in x_list:
@@ -102,7 +102,8 @@ class BayesianOptimization(Generic[NT, T, G]):
 
             # objective function evaluation for new derivation tree
             cv_score = obj_fun(next_sample)
-            print(cv_score)
+            print(f"acquisition: {acquisition_function(next_sample)}")
+            print(f"cv_score: {cv_score}")
 
             # Update lists
             x_list.append(next_sample)

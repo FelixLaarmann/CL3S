@@ -2,6 +2,8 @@ from src.cl3s import SpecificationBuilder, Constructor, Literal, Var, SearchSpac
 
 from src.cl3s.genetic_programming.evolutionary_search import TournamentSelection
 from src.cl3s.scikit.graph_kernel import WeisfeilerLehmanKernel
+
+from grakel.utils import graph_from_networkx
 from itertools import product
 
 
@@ -1316,15 +1318,55 @@ if __name__ == "__main__":
 
     term = list(search_space.enumerate_trees(target, 2))[0]
 
-    #terms = list(search_space.enumerate_trees(target, 10))
+    terms = list(search_space.enumerate_trees(target, 10))
 
-    kernel = WeisfeilerLehmanKernel()
+    def to_grakel_graph(t):
+        p = t.interpret(repo.edgelist_algebra())
+        if not isinstance(p, tuple):
+            print(t.interpret(repo.pretty_term_algebra()))
+            raise ValueError("edgelist interpretation did not return a tuple")
+        f, inputs = p
+        edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
+        edgelist = edgelist + [(o, "output") for o in to_outputs]
 
-    def fit(t):
-        return kernel._f(term, t)
+        #pos_A = pos_A | {"input": (-5.5, -3.8), "output": (max([x for x, y in pos_A.values()]) + 2.5, -3.8)}
 
-    """
-    evo_alg = TournamentSelection(search_space, target, fit, population_size=200, crossover_rate=0.85, mutation_rate=0.3, generation_limit=40, tournament_size=10, greater_is_better=True, enforce_diversity=False, elitism=1)
+        G = nx.MultiDiGraph()
+        G.add_edges_from(edgelist)
+
+        relabel = {n: ("Conv1D" if "Conv1D" in n
+                       else "LinearLayer" if "LinearLayer" in n
+                       else "Maxpool1D" if "Maxpool1D" in n
+                       else "Upsample" if "Upsample" in n
+                       else n)
+                   for n in G.nodes()}
+
+        for n in G.nodes():
+            G.nodes[n]['label'] = relabel[n]
+
+        gk_graph = graph_from_networkx([G.to_undirected()], node_labels_tag='label')
+
+        return gk_graph
+
+    kernel0 = WeisfeilerLehmanKernel(to_grakel_graph=to_grakel_graph)
+
+    kernel1 = WeisfeilerLehmanKernel()
+
+    def fit0(t):
+        return kernel0._f(term, t)
+
+    def fit1(t):
+        return kernel1._f(term, t)
+
+    for t in terms:
+        print(t.interpret(repo.pretty_term_algebra()))
+        print(fit0(t))
+        print(fit1(t))
+        print("-----")
+    print(term.interpret(repo.pretty_term_algebra()))
+
+    #"""
+    evo_alg = TournamentSelection(search_space, target, fit1, population_size=100, crossover_rate=0.85, mutation_rate=0.3, generation_limit=40, tournament_size=10, greater_is_better=True, enforce_diversity=False, elitism=1)
 
     print("starting evolutionary search")
     result = evo_alg.optimize()
@@ -1333,8 +1375,8 @@ if __name__ == "__main__":
     print(term.interpret(repo.pretty_term_algebra()))
     print(result.interpret(repo.pretty_term_algebra()))
 
-    print(kernel._f(term, result))
-    """
+    print(kernel1._f(term, result))
+    #"""
 
     """
     x_list = []
@@ -1397,9 +1439,9 @@ if __name__ == "__main__":
     """
 
 
-    #"""
-    bo = BayesianOptimization(search_space, target, population_size=100, crossover_rate=0.85,
-                              mutation_rate=0.6, generation_limit=10, tournament_size=10,
+    """
+    bo = BayesianOptimization(search_space, target, population_size=50, crossover_rate=0.85,
+                              mutation_rate=0.6, generation_limit=10, tournament_size=4,
                               enforce_diversity=False, elitism=1)
     print("starting bayesian optimisation")
     tree_bo, X, Y = bo.bayesian_optimisation(3, fit, greater_is_better=True, n_pre_samples=50)
@@ -1408,4 +1450,52 @@ if __name__ == "__main__":
     print(kernel._f(term, tree_bo))
     for x, y in zip(X, Y):
         print(x.interpret(repo.pretty_term_algebra()), y)
-    #"""
+    print("-----")
+    print(term.interpret(repo.pretty_term_algebra()))
+    """
+
+    """
+    for t in terms:
+        print(t.interpret(repo.pretty_term_algebra()))
+        f, inputs = t.interpret(repo.edgelist_algebra())
+        edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
+        edgelist = edgelist + [(o, "output") for o in to_outputs]
+
+        pos_A = pos_A | {"input": (-5.5, -3.8), "output": (max([x for x, y in pos_A.values()]) + 2.5, -3.8)}
+
+        G = nx.MultiDiGraph()
+        G.add_edges_from(edgelist)
+
+        relabel = {n: ("Conv1D" if "Conv1D" in n
+                       else "LinearLayer" if "LinearLayer" in n
+                       else "Maxpool1D" if "Maxpool1D" in n
+                       else "Upsample" if "Upsample" in n
+                       else n)
+                   for n in G.nodes()}
+
+        for n in G.nodes():
+            G.nodes[n]['symbol'] = relabel[n]
+
+        gk_graph = graph_from_networkx([G.to_undirected()], node_labels_tag='symbol')
+
+        for g in gk_graph:
+            for x in g:
+                print(x)
+
+
+
+
+        connectionstyle = [f"arc3,rad={r}" for r in accumulate([0.3] * 4)]
+
+        plt.figure(figsize=(25, 25))
+
+        pos_G = nx.bfs_layout(G, "input")
+        node_size = 3000
+        nx.draw_networkx_nodes(G, pos_A, node_size=node_size, node_color='lightblue', alpha=0.5, margins=0.05)
+        nx.draw_networkx_labels(G, pos_A, labels=relabel, font_size=6, font_weight="bold")
+        nx.draw_networkx_edges(G, pos_A, edge_color="black", connectionstyle=connectionstyle, node_size=node_size,
+                               width=2)
+        plt.figtext(0.01, 0.02, t.interpret(repo.pretty_term_algebra()), fontsize=14)
+
+        #plt.show()
+    """
