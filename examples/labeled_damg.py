@@ -1227,12 +1227,6 @@ class Labeled_DAMG_Repository:
             "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: f"{x} ; {y}"),
         }
 
-    def unique_id(self):
-        id = self.id_seed
-        self.id_seed += 1
-        return id
-
-
     def edgelist_algebra(self):
         return {
             "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, inputs: ([], inputs, {})),
@@ -1257,6 +1251,47 @@ class Labeled_DAMG_Repository:
                                                                       i)),
         }
 
+    def edgelist_algebra_detailed(self):
+        return {
+            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, inputs: ([], inputs, {})),
+
+            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, inputs: ([], inputs[n:] + inputs[:n], {})),
+
+            "node": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: ([(x,l + str(id)) for x in inputs],  [str((l, i, o)) + str(id) for _ in range(0,o)], {str((l, i, o)) + str(id) : id})),
+
+            "beside_singleton": (lambda i, o, ls, para, x: x),
+
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: lambda id, inputs:
+                (x(id, inputs[:i1])[0] + y((id[0], id[1] + 0.2), inputs[i1:])[0],
+                 x(id, inputs[:i1])[1] + y((id[0], id[1] + 0.2), inputs[i1:])[1],
+                 x(id, inputs[:i1])[2] | y((id[0], id[1] + 0.2), inputs[i1:])[2])),
+
+            "before_singleton": (lambda i, o, r, ls, ls1, x: (x, i)),
+
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: (lambda id, inputs:
+                                                                      (y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[0] + x(id, inputs)[0],
+                                                                       y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[1],
+                                                                       y[0]((id[0] + 2.5, id[1]), x(id, inputs)[1])[2] | x(id, inputs)[2]),
+                                                                      i)),
+        }
+
+    def structure_algebra(self):
+        return {
+            "edges": (lambda io, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: (("swap", 0, None), None, None)),
+
+            "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: (("swap", None, None), None, None)),
+
+            "node": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: (l, None, None)),
+
+            "beside_singleton": (lambda i, o, ls, para, x: (x,)),
+
+            "beside_cons": (lambda i, i1, i2, o, o1, o2, ls, head, tail, x, y: (x,) + y),
+
+            "before_singleton": (lambda i, o, r, ls, ls1, x: (x,)),
+
+            "before_cons": (lambda i, j, o, r, ls, head, tail, x, y: (x,) + y),
+        }
+
 if __name__ == "__main__":
     repo = Labeled_DAMG_Repository(labels=["Conv1D", "LinearLayer", "Maxpool1D", "Upsample"], dimensions=range(1, 6))
 
@@ -1266,8 +1301,8 @@ if __name__ == "__main__":
                             Constructor("input", Literal(1))
                             & Constructor("output", Literal(1))
                             & Constructor("structure", Literal(
-                                #((None,), (None, None), (None, None), (None,), (None,))
-                                ((None,), (None, None), (None,))
+                                ((None,), (None, None), (None, None), (None,), (None,))
+                                #((None,), (None, None), (None,))
                             )))
 
     edge = (("swap", 0, 1), 1, 1)
@@ -1348,9 +1383,33 @@ if __name__ == "__main__":
 
         return gk_graph
 
+    def to_grakel_graph_detailed(t):
+        f, inputs = t.interpret(repo.edgelist_algebra_detailed())
+        edgelist, to_outputs, pos_A = f((-3.8, -3.8), ["input" for _ in range(0, inputs)])
+        edgelist = edgelist + [(o, "output") for o in to_outputs]
+
+        #pos_A = pos_A | {"input": (-5.5, -3.8), "output": (max([x for x, y in pos_A.values()]) + 2.5, -3.8)}
+
+        G = nx.MultiDiGraph()
+        G.add_edges_from(edgelist)
+
+        relabel = {n: (n[:16] if "Conv1D" in n
+                       else n[:21] if "LinearLayer" in n
+                       else n[:19] if "Maxpool1D" in n
+                       else n[:18] if "Upsample" in n
+                       else n)
+                   for n in G.nodes()}
+
+        for n in G.nodes():
+            G.nodes[n]['label'] = relabel[n]
+
+        gk_graph = graph_from_networkx([G.to_undirected()], node_labels_tag='label')
+
+        return gk_graph
+
     kernel0 = WeisfeilerLehmanKernel(to_grakel_graph=to_grakel_graph)
 
-    kernel1 = WeisfeilerLehmanKernel()
+    kernel1 = WeisfeilerLehmanKernel(to_grakel_graph=to_grakel_graph_detailed)
 
     def fit0(t):
         return kernel0._f(term, t)
@@ -1365,8 +1424,10 @@ if __name__ == "__main__":
         print("-----")
     print(term.interpret(repo.pretty_term_algebra()))
 
-    #"""
-    evo_alg = TournamentSelection(search_space, target, fit1, population_size=100, crossover_rate=0.85, mutation_rate=0.3, generation_limit=40, tournament_size=10, greater_is_better=True, enforce_diversity=False, elitism=1)
+
+    evo_alg = TournamentSelection(search_space, target, fit0, population_size=100, crossover_rate=0.85,
+                                      mutation_rate=0.3, generation_limit=10, tournament_size=10,
+                                      greater_is_better=True, enforce_diversity=False, elitism=1)
 
     print("starting evolutionary search")
     result = evo_alg.optimize()
@@ -1375,8 +1436,27 @@ if __name__ == "__main__":
     print(term.interpret(repo.pretty_term_algebra()))
     print(result.interpret(repo.pretty_term_algebra()))
 
-    print(kernel1._f(term, result))
-    #"""
+    print(kernel0._f(term, result))
+
+    if kernel0._f(term, result) == 1:
+        structure = result.interpret(repo.structure_algebra())
+        next_target = Constructor("DAG",
+                            Constructor("input", Literal(1))
+                            & Constructor("output", Literal(1))
+                            & Constructor("structure", Literal(
+                                structure
+                            )))
+        print(target)
+        next_search_space = synthesizer.construct_search_space(next_target).prune()
+        next_evo_alg = TournamentSelection(next_search_space, next_target, fit1, population_size=100, crossover_rate=0.85,
+                                      mutation_rate=0.35, generation_limit=20, tournament_size=10,
+                                      greater_is_better=True, enforce_diversity=False, elitism=1)
+        print("starting evolutionary search on detailed kernel")
+        next_result = next_evo_alg.optimize()
+        print("finished evolutionary search on detailed kernel")
+        print(term.interpret(repo.pretty_term_algebra()))
+        print(next_result.interpret(repo.pretty_term_algebra()))
+        print(kernel1._f(term, next_result))
 
     """
     x_list = []
