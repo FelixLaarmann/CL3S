@@ -7,7 +7,7 @@ from collections.abc import Hashable
 
 from typing import Generic, TypeVar
 
-from src.cl3s.scikit.graph_kernel import WeisfeilerLehmanKernel
+from .graph_kernel import WeisfeilerLehmanKernel
 
 from .acquisition_function import ExpectedImprovement, EvolutionaryAcquisitionFunctionOptimization
 

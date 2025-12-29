@@ -8,9 +8,9 @@ from collections.abc import Hashable
 
 from typing import Generic, TypeVar
 
-from src.cl3s import TournamentSelection
+from ..genetic_programming import TournamentSelection
 
-from src.cl3s import SearchSpace
+from ..search_space import SearchSpace
 
 NT = TypeVar("NT", bound=Hashable) # type of non-terminals
 T = TypeVar("T", bound=Hashable) # type of terminals
