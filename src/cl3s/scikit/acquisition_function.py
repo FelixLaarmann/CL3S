@@ -70,8 +70,11 @@ class ExpectedImprovement(AcquisitionFunction[NT, T, G]):
         else:
             loss_optimum = np.min(y)
 
+        if t in self.gp.X_train_:
+            return 0.0
+
         values = np.zeros_like(mu)
-        mask = sigma > 0 and sigma > 1.001e-5 # I don't know why, but sigma is not 0.0 for trees in X_train_ ...
+        mask = sigma > 0 #and sigma > 1.001e-5 # I don't know why, but sigma is not 0.0 for all trees in X_train_ ...
         improve = loss_optimum - xi - mu[mask]
         scaled = improve / sigma[mask]
         cdf = norm.cdf(scaled)

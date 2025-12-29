@@ -1480,7 +1480,7 @@ if __name__ == "__main__":
     x_list = []
     y_list = []
 
-    x0 = list(search_space.sample(100, target))
+    x0 = list(search_space.sample(10, target))
 
     for tree in x0:
         x_list.append(tree)
@@ -1549,11 +1549,11 @@ if __name__ == "__main__":
 
 
     """
-    bo = BayesianOptimization(search_space, target, population_size=50, crossover_rate=0.85,
-                              mutation_rate=0.6, generation_limit=10, tournament_size=4,
+    bo = BayesianOptimization(search_space, target, kernel=kernel1, population_size=100, crossover_rate=0.85,
+                              mutation_rate=0.35, generation_limit=10, tournament_size=10,
                               enforce_diversity=False, elitism=1)
     print("starting bayesian optimisation")
-    tree_bo, X, Y = bo.bayesian_optimisation(3, fit1, greater_is_better=True, n_pre_samples=50)
+    tree_bo, X, Y = bo.bayesian_optimisation(3, fit1, greater_is_better=True, n_pre_samples=10)
     print("finished bayesian optimisation")
     print(tree_bo.interpret(repo.pretty_term_algebra()))
     print(kernel1._f(term, tree_bo))
