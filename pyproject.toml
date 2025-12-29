@@ -6,23 +6,7 @@ build-backend = "hatchling.build"
 [project]
 name = "cl3s"
 version = "0.0.1"
-dependencies = [
-  "networkx==3.5",
-  "numpy==1.26.4",
-  "scikit-learn==1.6.1",
-  "scipy==1.12.0",
-  "combinatory-synthesizer @ git+https://github.com/tudo-seal/cosy.git",
-  "mypy==1.15.0",
-  "mypy_extensions==1.1.0",
-  "typing_extensions==4.13.2",
-  "grakel==0.1.10",
-  "pydot",
-  "gpytorch",
-  "torch",
-  "pandas",
-  "matplotlib",
-  "pytest",
-]
+dynamic = ["dependencies"]
 requires-python = ">=3.11"
 authors = [
   { name = "Felix Laarmann", email = "felix.laarmann@tu-dortmund.de" },
@@ -41,4 +25,7 @@ classifiers = [
 
 [project.urls]
 Repository = "https://github.com/FelixLaarmann/cl3s"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
 
