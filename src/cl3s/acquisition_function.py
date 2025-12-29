@@ -16,7 +16,7 @@ NT = TypeVar("NT", bound=Hashable) # type of non-terminals
 T = TypeVar("T", bound=Hashable) # type of terminals
 G = TypeVar("G", bound=Hashable)  # type of constants/literal group names
 
-from src.cl3s.tree import DerivationTree
+from .tree import DerivationTree
 
 
 class AcquisitionFunction(Generic[NT, T, G]):

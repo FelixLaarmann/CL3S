@@ -10,7 +10,7 @@ import networkx as nx
 import grakel
 from grakel.utils import graph_from_networkx
 
-from copy import copy, deepcopy
+from copy import copy
 
 NT = TypeVar("NT", bound=Hashable) # type of non-terminals
 T = TypeVar("T", bound=Hashable) # type of terminals
