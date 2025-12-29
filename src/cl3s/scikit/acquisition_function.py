@@ -36,7 +36,7 @@ class AcquisitionFunction(Generic[NT, T, G]):
         raise NotImplementedError("Subclasses must implement this method.")
 
 
-class ExpectedImprovement(AcquisitionFunction[NT, T, G]):
+class SimplifiedExpectedImprovement(AcquisitionFunction[NT, T, G]):
     def __call__(self, t: DerivationTree[NT, T, G]):
         mu, sigma = self.gp.predict([t], return_std=True)
         y = self.gp.y_train_
@@ -59,6 +59,28 @@ class ExpectedImprovement(AcquisitionFunction[NT, T, G]):
         """
 
         return ei.item()
+
+class ExpectedImprovement(AcquisitionFunction[NT, T, G]):
+    def __call__(self, t: DerivationTree[NT, T, G], xi=0.01):
+        mu, sigma = self.gp.predict([t], return_std=True)
+        y = self.gp.y_train_
+
+        if self.greater_is_better:
+            loss_optimum = np.max(y)
+        else:
+            loss_optimum = np.min(y)
+
+        values = np.zeros_like(mu)
+        mask = sigma > 0 and sigma > 1.001e-5 # I don't know why, but sigma is not 0.0 for trees in X_train_ ...
+        improve = loss_optimum - xi - mu[mask]
+        scaled = improve / sigma[mask]
+        cdf = norm.cdf(scaled)
+        pdf = norm.pdf(scaled)
+        exploit = improve * cdf
+        explore = sigma[mask] * pdf
+        values[mask] = exploit + explore
+
+        return values.item()
 
 
 class AcquisitionFunctionOptimization(Generic[NT, T, G]):

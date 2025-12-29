@@ -68,7 +68,7 @@ class BayesianOptimization(Generic[NT, T, G]):
                                              alpha=alpha,
                                              # n_restarts_optimizer=10,
                                              optimizer=None,  # we currently need this, to prevent derivation of the kernel
-                                             normalize_y=True)
+                                             normalize_y=False)
 
         for n in range(n_iters):
 

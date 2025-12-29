@@ -273,7 +273,7 @@ if __name__ == "__main__":
 
     model.fit(xp, yp)
 
-    acq_fun = ExpectedImprovement(model, greater_is_better=True)
+    acq_fun = SimplifiedExpectedImprovement(model, greater_is_better=True)
 
     search = TournamentSelection(search_space, target, acq_fun, population_size=10, reproduction_rate=0.2,
                                  generation_limit=2, greater_is_better=True)

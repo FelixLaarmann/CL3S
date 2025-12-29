@@ -1,4 +1,5 @@
-from src.cl3s import SpecificationBuilder, Constructor, Literal, Var, SearchSpaceSynthesizer, DerivationTree, DataGroup, Group
+from src.cl3s import (SpecificationBuilder, Constructor, Literal, Var,
+                      SearchSpaceSynthesizer, DerivationTree, DataGroup, Group)
 
 from src.cl3s.genetic_programming.evolutionary_search import TournamentSelection
 from src.cl3s.scikit.graph_kernel import WeisfeilerLehmanKernel
@@ -9,7 +10,7 @@ from itertools import product
 
 import numpy as np
 from src.cl3s.scikit.bayesian_optimization import BayesianOptimization
-from src.cl3s.scikit.acquisition_function import ExpectedImprovement
+from src.cl3s.scikit.acquisition_function import SimplifiedExpectedImprovement, ExpectedImprovement
 from sklearn.gaussian_process import GaussianProcessRegressor
 
 from typing import Any
@@ -1350,7 +1351,16 @@ if __name__ == "__main__":
 
     target = target101
     search_space = synthesizer.construct_search_space(target).prune()
+    """"
+    test = search_space.as_tuples()
+    test = filter(lambda x: "DAG_component" in str(x[0]), test)
 
+    for nt, rule in test:
+        if "DAG_component" in str(nt):
+            for subrule in rule:
+                if "node" in str(subrule.terminal):
+                    print(f"{nt} -> {subrule.terminal}{tuple(str(arg.name) for arg in subrule.arguments)}")
+    """
     term = list(search_space.enumerate_trees(target, 2))[0]
 
     terms = list(search_space.enumerate_trees(target, 10))
@@ -1411,12 +1421,18 @@ if __name__ == "__main__":
 
     kernel1 = WeisfeilerLehmanKernel(to_grakel_graph=to_grakel_graph_detailed)
 
+    kernel2 = WeisfeilerLehmanKernel()
+
     def fit0(t):
         return kernel0._f(term, t)
 
     def fit1(t):
         return kernel1._f(term, t)
 
+    def fit2(t):
+        return kernel2._f(term, t)
+
+    """
     for t in terms:
         print(t.interpret(repo.pretty_term_algebra()))
         print(fit0(t))
@@ -1458,27 +1474,28 @@ if __name__ == "__main__":
         print(term.interpret(repo.pretty_term_algebra()))
         print(next_result.interpret(repo.pretty_term_algebra()))
         print(kernel1._f(term, next_result))
-
     """
+
+    #"""
     x_list = []
     y_list = []
 
-    x0 = list(search_space.sample(10, target))
+    x0 = list(search_space.sample(100, target))
 
     for tree in x0:
         x_list.append(tree)
-        y_list.append(fit(tree))
+        y_list.append(fit1(tree))
 
     xp = np.array(x_list)
     yp = np.array(y_list)
 
     alpha = 1e-10
 
-    model = GaussianProcessRegressor(kernel=kernel,
+    model = GaussianProcessRegressor(kernel=kernel1,
                                      alpha=alpha,
                                      # n_restarts_optimizer=10,
                                      optimizer=None,  # we currently need this, to prevent derivation of the kernel
-                                     normalize_y=True)
+                                     normalize_y=False)
 
     print("start fitting")
 
@@ -1486,25 +1503,36 @@ if __name__ == "__main__":
 
     print("finished fitting")
 
-    acquisition_function = ExpectedImprovement(model, True)
+    acquisition_function = SimplifiedExpectedImprovement(model, True)
 
-    #for x in xp:
-    #    print(x.interpret(repo.pretty_term_algebra()))
-    #    print(fit(x))
-    #    print(acquisition_function(x))
-    #    print("-----")
+    acquisition_function2 = ExpectedImprovement(model, True)
+
+    print(yp)
+    print(model.y_train_)
+
+    print("acquisition values on initial data:")
+    for x in xp:
+        print(x in model.X_train_)
+        print(x.interpret(repo.pretty_term_algebra()))
+        print(fit1(x))
+        print(acquisition_function(x))
+        print(acquisition_function2(x))
+        print("-----")
 
     test = list(search_space.sample(10, target))
+    test2 = list(search_space.enumerate_trees(target, 10))
 
-    for x in test:
+    print("acquisition values on test data:")
+    for x in test + test2:
         print(x.interpret(repo.pretty_term_algebra()))
-        print(fit(x))
+        print(fit1(x))
         print(acquisition_function(x))
+        print(acquisition_function2(x))
         print("-----")
 
     print(term.interpret(repo.pretty_term_algebra()))
 
-    evo_alg = TournamentSelection(search_space, target, acquisition_function, population_size=100, crossover_rate=0.85,
+    evo_alg = TournamentSelection(search_space, target, acquisition_function2, population_size=100, crossover_rate=0.85,
                                   mutation_rate=0.3, generation_limit=40, tournament_size=10, greater_is_better=True,
                                   enforce_diversity=False, elitism=1)
 
@@ -1515,9 +1543,9 @@ if __name__ == "__main__":
     print(term.interpret(repo.pretty_term_algebra()))
     print(result.interpret(repo.pretty_term_algebra()))
 
-    print(kernel._f(term, result))
-        
-    """
+    print(kernel1._f(term, result))
+    print(acquisition_function2(result))
+    #"""
 
 
     """
@@ -1525,10 +1553,10 @@ if __name__ == "__main__":
                               mutation_rate=0.6, generation_limit=10, tournament_size=4,
                               enforce_diversity=False, elitism=1)
     print("starting bayesian optimisation")
-    tree_bo, X, Y = bo.bayesian_optimisation(3, fit, greater_is_better=True, n_pre_samples=50)
+    tree_bo, X, Y = bo.bayesian_optimisation(3, fit1, greater_is_better=True, n_pre_samples=50)
     print("finished bayesian optimisation")
     print(tree_bo.interpret(repo.pretty_term_algebra()))
-    print(kernel._f(term, tree_bo))
+    print(kernel1._f(term, tree_bo))
     for x, y in zip(X, Y):
         print(x.interpret(repo.pretty_term_algebra()), y)
     print("-----")
