@@ -10,19 +10,20 @@ from .tree import DerivationTree
 from .search_space import SearchSpace
 from .synthesizer import SearchSpaceSynthesizer
 
-from .genetic_programming.evolutionary_search import TournamentSelection
-from .scikit.acquisition_function import ExpectedImprovement
-from .scikit.graph_kernel import WeisfeilerLehmanKernel
-from .scikit.bayesian_optimization import BayesianOptimization
-
-from collections.abc import Hashable, Iterable, Mapping
-from typing import Any, Generic, TypeVar, Hashable
-
 from cosy.specification_builder import SpecificationBuilder
 from cosy.subtypes import Subtypes, Taxonomy
 from cosy.synthesizer import Specification
 from cosy.types import Arrow, Constructor, Intersection, Literal, Omega, Type, Var, Group, DataGroup
 
+import genetic_programming.evolutionary_search
+import scikit.bayesian_optimization
+import scikit.acquisition_function
+import scikit.graph_kernel
+
+from genetic_programming.evolutionary_search import TournamentSelection
+from scikit.bayesian_optimization import BayesianOptimization
+from scikit.acquisition_function import ExpectedImprovement, EvolutionaryAcquisitionFunctionOptimization
+from scikit.graph_kernel import WeisfeilerLehmanKernel
 
 __version__ = "0.0.1"
 
@@ -43,9 +44,12 @@ __all__ = [
     "Taxonomy",
     "Group",
     "DataGroup",
+    "genetic_programming",
+    "scikit",
     "TournamentSelection",
-    "ExpectedImprovement",
-    "WeisfeilerLehmanKernel",
     "BayesianOptimization",
+    "ExpectedImprovement",
+    "EvolutionaryAcquisitionFunctionOptimization",
+    "WeisfeilerLehmanKernel",
 ]
 
