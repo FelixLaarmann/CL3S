@@ -1,18 +1,11 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
 [project]
 name = "cl3s"
 version = "0.0.1"
-description = "Combinatory Logic Search Space Synthesizer"
-readme = "README.md"
-requires-python = ">=3.11"
-license = "Apache-2.0"
-authors = [
-  { name = "Felix Laarmann", email = "felix.laarmann@tu-dortmund.de" },
-]
-classifiers = [
-  "Programming Language :: Python",
-  "Programming Language :: Python :: 3.11",
-]
-
 dependencies = [
   "networkx==3.5",
   "numpy==1.26.4",
@@ -30,11 +23,22 @@ dependencies = [
   "matplotlib",
   "pytest",
 ]
+requires-python = ">=3.11"
+authors = [
+  { name = "Felix Laarmann", email = "felix.laarmann@tu-dortmund.de" },
+]
+maintainers = [
+  { name = "Felix Laarmann", email = "felix.laarmann@tu-dortmund.de" },
+]
+description = "Combinatory Logic Search Space Synthesizer"
+readme = "README.md"
+license = "Apache-2.0"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.11",
+]
 
 [project.urls]
-Source = "https://github.com/FelixLaarmann/cl3s"
+Repository = "https://github.com/FelixLaarmann/cl3s"
 
-
-[build-system]
-requires = ["hatchling", "hatch-vcs"]
-build-backend = "hatchling.build"
