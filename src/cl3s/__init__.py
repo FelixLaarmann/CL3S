@@ -10,6 +10,11 @@ from .tree import DerivationTree
 from .search_space import SearchSpace
 from .synthesizer import SearchSpaceSynthesizer
 
+from .genetic_programming.evolutionary_search import TournamentSelection
+from .scikit.acquisition_function import ExpectedImprovement
+from .scikit.graph_kernel import WeisfeilerLehmanKernel
+from .scikit.bayesian_optimization import BayesianOptimization
+
 from collections.abc import Hashable, Iterable, Mapping
 from typing import Any, Generic, TypeVar, Hashable
 
@@ -38,55 +43,9 @@ __all__ = [
     "Taxonomy",
     "Group",
     "DataGroup",
+    "TournamentSelection",
+    "ExpectedImprovement",
+    "WeisfeilerLehmanKernel",
+    "BayesianOptimization",
 ]
 
-
-T = TypeVar("T", bound=Hashable)
-
-class CL3S(Generic[T]):
-    component_specifications: Mapping[T, Specification]
-    taxonomy: Taxonomy | None = None
-    _synthesizer: SearchSpaceSynthesizer
-
-    def __init__(
-        self,
-        component_specifications: Mapping[T, Specification],
-        taxonomy: Taxonomy | None = None,
-    ) -> None:
-        self.component_specifications = component_specifications
-        self.taxonomy = taxonomy if taxonomy is not None else {}
-        self._synthesizer = SearchSpaceSynthesizer(component_specifications, None, self.taxonomy)
-
-    def solve(self, query: Type, max_count: int = 100) -> Iterable[Any]:
-        """
-        Solves the given query by constructing a solution space and enumerating and interpreting the resulting trees.
-
-        :param query: The query to solve.
-        :param max_count: The maximum number of trees to enumerate.
-        :return: An iterable of interpreted trees.
-        """
-        if not isinstance(query, Type):
-            msg = "Query must be of type Type"
-            raise TypeError(msg)
-        search_space = self._synthesizer.construct_search_space(query).prune()
-
-        trees = search_space.enumerate_trees(query, max_count=max_count)
-        for tree in trees:
-            yield tree.interpret()
-
-    def sample(self, query: Type, max_count: int = 100) -> Iterable[Any]:
-        """
-        Samples the given query by constructing a solution space and sampling the resulting trees.
-
-        :param query: The query to sample.
-        :param max_count: The maximum number of trees to sample.
-        :return: An iterable of interpreted trees.
-        """
-        if not isinstance(query, Type):
-            msg = "Query must be of type Type"
-            raise TypeError(msg)
-        search_space = self._synthesizer.construct_search_space(query).prune()
-
-        trees = search_space.sample(max_count, query)
-        for tree in trees:
-            yield tree.interpret()

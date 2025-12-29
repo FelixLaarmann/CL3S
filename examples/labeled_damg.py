@@ -1258,7 +1258,7 @@ class Labeled_DAMG_Repository:
 
             "swap": (lambda io, n, m, para1, para2, para3, para4, para5, para6, para7, para8, para9, para10, para11, para12, para13, para14, para15, para16: lambda id, inputs: ([], inputs[n:] + inputs[:n], {})),
 
-            "node": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: ([(x,l + str(id)) for x in inputs],  [str((l, i, o)) + str(id) for _ in range(0,o)], {str((l, i, o)) + str(id) : id})),
+            "node": (lambda l, i, o, para1, para2, para3, para4, para5, para6, para7: lambda id, inputs: ([(x,str((l, i, o)) + str(id)) for x in inputs],  [str((l, i, o)) + str(id) for _ in range(0,o)], {str((l, i, o)) + str(id) : id})),
 
             "beside_singleton": (lambda i, o, ls, para, x: x),
 
