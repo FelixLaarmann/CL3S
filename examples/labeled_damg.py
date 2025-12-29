@@ -1,16 +1,16 @@
 from src.cl3s import (SpecificationBuilder, Constructor, Literal, Var,
                       SearchSpaceSynthesizer, DerivationTree, DataGroup, Group)
 
-from src.cl3s.genetic_programming.evolutionary_search import TournamentSelection
-from src.cl3s.scikit.graph_kernel import WeisfeilerLehmanKernel
+from src.cl3s import TournamentSelection
+from src.cl3s import WeisfeilerLehmanKernel
 
 from grakel.utils import graph_from_networkx
 from itertools import product
 
 
 import numpy as np
-from src.cl3s.scikit.bayesian_optimization import BayesianOptimization
-from src.cl3s.scikit.acquisition_function import SimplifiedExpectedImprovement, ExpectedImprovement
+from src.cl3s import BayesianOptimization
+from src.cl3s import SimplifiedExpectedImprovement, ExpectedImprovement
 from sklearn.gaussian_process import GaussianProcessRegressor
 
 from typing import Any

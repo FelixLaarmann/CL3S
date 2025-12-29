@@ -8,15 +8,15 @@ from collections.abc import Hashable
 
 from typing import Generic, TypeVar
 
-from ..genetic_programming import TournamentSelection
+from .evolutionary_search import TournamentSelection
 
-from ..search_space import SearchSpace
+from .search_space import SearchSpace
 
 NT = TypeVar("NT", bound=Hashable) # type of non-terminals
 T = TypeVar("T", bound=Hashable) # type of terminals
 G = TypeVar("G", bound=Hashable)  # type of constants/literal group names
 
-from ..tree import DerivationTree
+from src.cl3s.tree import DerivationTree
 
 
 class AcquisitionFunction(Generic[NT, T, G]):

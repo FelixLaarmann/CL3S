@@ -10,7 +10,7 @@ from collections.abc import Callable, Hashable, Sequence
 from typing import Any, Generic, Optional, TypeVar, Union, Generator
 import typing
 
-from ..tree import DerivationTree
+from .tree import DerivationTree
 
 NT = TypeVar("NT", bound=Hashable) # type of non-terminals
 T = TypeVar("T", bound=Hashable) # type of terminals

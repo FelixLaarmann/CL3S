@@ -4,8 +4,8 @@ from typing import Generic, TypeVar
 
 from collections.abc import  Hashable
 
-from ..tree import DerivationTree
-from ..search_space import SearchSpace
+from .tree import DerivationTree
+from .search_space import SearchSpace
 
 NT = TypeVar("NT", bound=Hashable) # type of non-terminals
 T = TypeVar("T", bound=Hashable) # type of terminals

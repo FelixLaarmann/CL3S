@@ -15,15 +15,11 @@ from cosy.subtypes import Subtypes, Taxonomy
 from cosy.synthesizer import Specification
 from cosy.types import Arrow, Constructor, Intersection, Literal, Omega, Type, Var, Group, DataGroup
 
-import genetic_programming.evolutionary_search
-import scikit.bayesian_optimization
-import scikit.acquisition_function
-import scikit.graph_kernel
-
-from genetic_programming.evolutionary_search import TournamentSelection
-from scikit.bayesian_optimization import BayesianOptimization
-from scikit.acquisition_function import ExpectedImprovement, EvolutionaryAcquisitionFunctionOptimization
-from scikit.graph_kernel import WeisfeilerLehmanKernel
+from .evolutionary_search import TournamentSelection
+from .bayesian_optimization import BayesianOptimization
+from .acquisition_function import (SimplifiedExpectedImprovement, ExpectedImprovement,
+                                   EvolutionaryAcquisitionFunctionOptimization)
+from .graph_kernel import WeisfeilerLehmanKernel
 
 __version__ = "0.0.1"
 
@@ -44,12 +40,11 @@ __all__ = [
     "Taxonomy",
     "Group",
     "DataGroup",
-    "genetic_programming",
-    "scikit",
     "TournamentSelection",
     "BayesianOptimization",
     "ExpectedImprovement",
     "EvolutionaryAcquisitionFunctionOptimization",
+    "SimplifiedExpectedImprovement",
     "WeisfeilerLehmanKernel",
 ]
 

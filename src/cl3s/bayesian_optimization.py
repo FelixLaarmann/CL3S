@@ -11,7 +11,7 @@ from .graph_kernel import WeisfeilerLehmanKernel
 
 from .acquisition_function import ExpectedImprovement, EvolutionaryAcquisitionFunctionOptimization
 
-from ..search_space import SearchSpace
+from .search_space import SearchSpace
 
 NT = TypeVar("NT", bound=Hashable) # type of non-terminals
 T = TypeVar("T", bound=Hashable) # type of terminals
