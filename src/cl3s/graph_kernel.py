@@ -54,7 +54,7 @@ class WeisfeilerLehmanKernel(GenericKernelMixin, NormalizedKernelMixin, Kernel, 
         """ For some Grakel kernels there is a method pairwise_operation() that can be used to compute the kernel value
         between two graphs. However, the Weisfeiler Lehman kernel does not implement this method..."""
 
-        """We employ the Weifeiler Lehman kernel and we first compute the kernel value between the graph representation 
+        """We employ the Weisfeiler Lehman kernel and we first compute the kernel value between the graph representation 
         of the first derivation tree and itself."""
         wl_kernel.fit_transform(g1)
 
@@ -136,7 +136,7 @@ class HierarchicalWeisfeilerLehmanKernel(GenericKernelMixin, NormalizedKernelMix
             """ For some Grakel kernels there is a method pairwise_operation() that can be used to compute the kernel value
             between two graphs. However, the Weisfeiler Lehman kernel does not implement this method..."""
 
-            """We employ the Weifeiler Lehman kernel and we first compute the kernel value between the graph representation 
+            """We employ the Weisfeiler Lehman kernel and we first compute the kernel value between the graph representation 
             of the first derivation tree and itself."""
             wl_kernel.fit_transform(g1)
             """Then, we compute the kernel value between the graph representation of the second derivation tree 

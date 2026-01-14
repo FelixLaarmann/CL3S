@@ -17,7 +17,7 @@ from .evolutionary_search import TournamentSelection
 from .bayesian_optimization import BayesianOptimization
 from .acquisition_function import (SimplifiedExpectedImprovement, ExpectedImprovement,
                                    EvolutionaryAcquisitionFunctionOptimization)
-from .graph_kernel import WeisfeilerLehmanKernel
+from .graph_kernel import WeisfeilerLehmanKernel, HierarchicalWeisfeilerLehmanKernel
 
 __version__ = "0.0.1"
 
@@ -44,5 +44,6 @@ __all__ = [
     "EvolutionaryAcquisitionFunctionOptimization",
     "SimplifiedExpectedImprovement",
     "WeisfeilerLehmanKernel",
+    "HierarchicalWeisfeilerLehmanKernel",
 ]
 
