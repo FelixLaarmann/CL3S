@@ -60,7 +60,7 @@ class BayesianOptimization(Generic[NT, T, G]):
                 x_list.append(tree)
                 y_list.append(obj_fun(tree))
         x_list = list(x0)
-        y_list = list(y0)
+        y_list = list(y0) if y0 is not None else y_list
         x_size = len(x_list)
         if x_size != len(y_list):
             raise ValueError("The length of x0 and y0 must be the same.")
