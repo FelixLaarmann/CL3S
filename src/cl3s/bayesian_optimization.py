@@ -88,7 +88,7 @@ class BayesianOptimization(Generic[NT, T, G]):
                                                                     mutation_rate=self.mutation_rate,
                                                                     generation_limit=self.generation_limit,
                                                                     tournament_size=self.tournament_size,
-                                                                    greater_is_better=greater_is_better,
+                                                                    greater_is_better=True,  # always maximize EI
                                                                     enforce_diversity=self.enforce_diversity,
                                                                     elitism=self.elitism)
 

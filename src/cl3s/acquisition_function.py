@@ -76,25 +76,33 @@ class ExpectedImprovement(AcquisitionFunction[NT, T, G]):
 
         values = np.zeros_like(mu)
         mask = sigma > 0 #and sigma > 1.001e-5 # I don't know why, but sigma is not 0.0 for all trees in X_train_ ...
-        improve = loss_optimum - xi - mu[mask]
+        if self.greater_is_better:
+            improve = mu[mask] - loss_optimum - xi
+        else:
+            improve = loss_optimum - xi - mu[mask]
         scaled = improve / sigma[mask]
         cdf = norm.cdf(scaled)
         pdf = norm.pdf(scaled)
         exploit = improve * cdf
         explore = sigma[mask] * pdf
         values[mask] = exploit + explore
-
+        # always maximize EI!
         return values.item()
 
 
 class AcquisitionFunctionOptimization(Generic[NT, T, G]):
 
     def __init__(self, search_space: SearchSpace[NT, T, G], request: NT, acquisition_function: AcquisitionFunction[NT, T, G],
-                 greater_is_better: bool = False):
+                 greater_is_better: bool = True):
         self.search_space = search_space
         self.acquisition_function = acquisition_function
-        self.greater_is_better = greater_is_better
+        if isinstance(self.acquisition_function, ExpectedImprovement):
+            #ensure to always maximize EI
+            self.greater_is_better = True
+        else:
+            self.greater_is_better = greater_is_better
         self.request = request
+
 
     def __call__(self):
         raise NotImplementedError("Subclasses must implement this method.")
