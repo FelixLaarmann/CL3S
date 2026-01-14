@@ -38,13 +38,16 @@ class BayesianOptimization(Generic[NT, T, G]):
         self.elitism = elitism
         self.enforce_diversity = enforce_diversity
 
-    def bayesian_optimisation(self, n_iters, obj_fun, x0=None,
+    def bayesian_optimisation(self, n_iters, obj_fun, x0=None, y0=None,
                               n_pre_samples=10,
-                              gp_params=None, alpha=1e-10, greater_is_better: bool = False):
+                              gp_params=None, alpha=1e-10, greater_is_better: bool = False, ei_xi=0.01):
         """ bayesian_optimisation
 
-        from here: https://github.com/thuijskens/bayesian-optimization
-        ???
+        returns a dictionary with keys:
+        'best_tree': the best derivation tree found
+        'x': all sampled derivation trees
+        'y': all objective function values
+        'gp_model': the final GP model
         """
 
         x_list = []
@@ -53,9 +56,23 @@ class BayesianOptimization(Generic[NT, T, G]):
         if x0 is None:
             # Sample n_pre_samples initial points from grammar
             x0 = list(self.search_space.sample(n_pre_samples, self.request))
-        for tree in x0:
-            x_list.append(tree)
-            y_list.append(obj_fun(tree))
+            for tree in x0:
+                x_list.append(tree)
+                y_list.append(obj_fun(tree))
+        x_list = list(x0)
+        y_list = list(y0)
+        x_size = len(x_list)
+        if x_size != len(y_list):
+            raise ValueError("The length of x0 and y0 must be the same.")
+        """
+        Make sure we have at least n_pre_samples samples before starting the BO loop    
+        """
+        while x_size < n_pre_samples:
+            x1 = list(self.search_space.sample(n_pre_samples - x_size, self.request))
+            for tree in x1:
+                x_list.append(tree)
+                y_list.append(obj_fun(tree))
+            x_size = len(x_list)
 
         xp = np.array(x_list)
         yp = np.array(y_list)
@@ -102,8 +119,8 @@ class BayesianOptimization(Generic[NT, T, G]):
 
             # objective function evaluation for new derivation tree
             cv_score = obj_fun(next_sample)
-            print(f"acquisition: {acquisition_function(next_sample)}")
-            print(f"cv_score: {cv_score}")
+            print(f"EI(next_sample): {acquisition_function(next_sample)}")
+            print(f"f_obj(next_sample): {cv_score}")
 
             # Update lists
             x_list.append(next_sample)
@@ -117,5 +134,111 @@ class BayesianOptimization(Generic[NT, T, G]):
             best_tree = xp[np.argmax(yp)]
         else:
             best_tree = xp[np.argmin(yp)]
-        return best_tree, xp, yp
+
+        result = {"best_tree": best_tree, "x": xp, "y": yp, "gp_model": model}
+        return result
+
+    def verbose_bayesian_optimisation(self, n_iters, verbose_obj_fun, x0=None,
+                              n_pre_samples=10,
+                              gp_params=None, alpha=1e-10, greater_is_better: bool = False, ei_xi=0.01):
+        """ bayesian_optimisation
+        for verbose objective functions, meaning that the objective function returns a dictionary with at least
+        the key 'score' for the actual objective value
+
+        The verbose bayesian optimization can't allow a warm start, because it needs to gather the verbose information
+        of the obj_function calls.
+        But you are allowed to "seed" the initial sample with x0.
+        """
+
+        x_list = []
+        y_list = []
+        verbose_list = []
+
+        if x0 is None:
+            # Sample n_pre_samples initial points from grammar
+            x0 = list(self.search_space.sample(n_pre_samples, self.request))
+        for tree in x0:
+            x_list.append(tree)
+            y_list.append(verbose_obj_fun(tree)["score"])
+            verbose_list.append(verbose_obj_fun(tree))
+
+        x_size = len(x_list)
+        if x_size != len(y_list):
+            raise ValueError("The length of x0 and y0 must be the same.")
+        """
+        Make sure we have at least n_pre_samples samples before starting the BO loop    
+        """
+        while x_size < n_pre_samples:
+            x1 = list(self.search_space.sample(n_pre_samples - x_size, self.request))
+            for tree in x1:
+                x_list.append(tree)
+                y_list.append(verbose_obj_fun(tree)["score"])
+                verbose_list.append(verbose_obj_fun(tree))
+            x_size = len(x_list)
+
+        xp = np.array(x_list)
+        yp = np.array(y_list)
+
+        # Create the GP
+        if gp_params is not None:
+            model = GaussianProcessRegressor(**gp_params)
+        else:
+            model = GaussianProcessRegressor(kernel=self.kernel,
+                                             alpha=alpha,
+                                             # n_restarts_optimizer=10,
+                                             optimizer=None,  # we currently need this, to prevent derivation of the kernel
+                                             normalize_y=False)
+
+        for n in range(n_iters):
+
+            print("iteration:", n)
+
+            model.fit(xp, yp)
+
+            # Acquisition function for current GP
+            acquisition_function = ExpectedImprovement(model, greater_is_better)
+
+            # Sample next tree
+            optimizer = EvolutionaryAcquisitionFunctionOptimization(self.search_space,
+                                                                    self.request,
+                                                                    acquisition_function,
+                                                                    population_size=self.population_size,
+                                                                    crossover_rate=self.crossover_rate,
+                                                                    mutation_rate=self.mutation_rate,
+                                                                    generation_limit=self.generation_limit,
+                                                                    tournament_size=self.tournament_size,
+                                                                    greater_is_better=True,  # always maximize EI
+                                                                    enforce_diversity=self.enforce_diversity,
+                                                                    elitism=self.elitism)
+
+            next_sample = optimizer()
+            print(f"next_sample in x_list: {next_sample in x_list}")
+
+            # Duplicates will break the GP. In case of a duplicate, we will randomly sample a next query point.
+            while next_sample in x_list:
+                # print("Duplicate detected. Sampling randomly.")
+                next_sample = self.search_space.sample_tree(self.request)
+
+            # objective function evaluation for new derivation tree
+            cv_score = verbose_obj_fun(next_sample)["score"]
+            print(f"EI(next_sample): {acquisition_function(next_sample)}")
+            print(f"verbose_f_obj(next_sample): {cv_score}")
+
+            # Update lists
+            x_list.append(next_sample)
+            y_list.append(cv_score)
+            verbose_list.append(verbose_obj_fun(next_sample))
+
+            # Update xp and yp
+            xp = np.array(x_list)
+            yp = np.array(y_list)
+
+        if greater_is_better:
+            best_tree = xp[np.argmax(yp)]
+        else:
+            best_tree = xp[np.argmin(yp)]
+
+        result = {"best_tree": best_tree, "x": xp, "y": yp, "gp_model": model, "verbose_calls": verbose_list}
+        return result
+
 

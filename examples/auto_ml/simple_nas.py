@@ -285,8 +285,10 @@ if __name__ == "__main__":
         print(t)
         print(obj_fun(t))
 
-    best, xp, yp = optimizer.bayesian_optimisation(5, obj_fun, n_pre_samples=10,
+    result = optimizer.bayesian_optimisation(5, obj_fun, n_pre_samples=10,
                                                    greater_is_better=True)
+
+    best, xp, yp = result["best_tree"], result["x"], result["y"]
     print(best)
     list_x = list(xp)
     list_y = list(yp)
