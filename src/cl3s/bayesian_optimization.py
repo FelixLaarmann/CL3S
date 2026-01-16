@@ -22,6 +22,8 @@ class BayesianOptimization(Generic[NT, T, G]):
 
     def __init__(self, search_space: SearchSpace[NT, T, G], request: NT,
                  kernel: GenericKernelMixin = WeisfeilerLehmanKernel(),
+                 kernel_optimizer = None,
+                 n_restarts_optimizer: int = 0,
                  population_size: int = 200, tournament_size: int = 10, crossover_rate: float = 0.8,
                  mutation_rate: float = 0.3,
                  generation_limit: int = 50, elitism: int = 1,
@@ -30,6 +32,8 @@ class BayesianOptimization(Generic[NT, T, G]):
         self.search_space = search_space
         self.request = request
         self.kernel = kernel
+        self.n_restarts_optimizer = n_restarts_optimizer
+        self.kernel_optimizer = kernel_optimizer
         self.population_size = population_size
         self.tournament_size = tournament_size
         self.crossover_rate = crossover_rate
@@ -83,8 +87,8 @@ class BayesianOptimization(Generic[NT, T, G]):
         else:
             model = GaussianProcessRegressor(kernel=self.kernel,
                                              alpha=alpha,
-                                             # n_restarts_optimizer=10,
-                                             optimizer=None,  # we currently need this, to prevent derivation of the kernel
+                                             n_restarts_optimizer=self.n_restarts_optimizer,
+                                             optimizer=self.kernel_optimizer,  # we currently need this, to prevent derivation of the kernel
                                              normalize_y=False)
 
         for n in range(n_iters):

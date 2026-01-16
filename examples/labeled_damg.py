@@ -2,7 +2,7 @@ from src.cl3s import (SpecificationBuilder, Constructor, Literal, Var,
                       SearchSpaceSynthesizer, DerivationTree, DataGroup, Group)
 
 from src.cl3s import TournamentSelection
-from src.cl3s import WeisfeilerLehmanKernel
+from src.cl3s import WeisfeilerLehmanKernel, OptimizableHierarchicalWeisfeilerLehmanKernel
 
 from grakel.utils import graph_from_networkx
 from itertools import product
@@ -1423,6 +1423,11 @@ if __name__ == "__main__":
 
     kernel2 = WeisfeilerLehmanKernel()
 
+    hkernel = OptimizableHierarchicalWeisfeilerLehmanKernel(to_grakel_graph1=None, to_grakel_graph2=to_grakel_graph,
+                                                            to_grakel_graph3=to_grakel_graph_detailed,
+                                                            weight1=0.1, weight2=0.5, weight3=0.4,
+                                                            n_iter1=1, n_iter2=1, n_iter3=1)
+
     def fit0(t):
         return kernel0._f(term, t)
 
@@ -1491,12 +1496,10 @@ if __name__ == "__main__":
 
     alpha = 1e-10
 
-    print(kernel1.bounds)
-
-    model = GaussianProcessRegressor(kernel=kernel1,
+    model = GaussianProcessRegressor(kernel=hkernel,
                                      alpha=alpha,
                                      n_restarts_optimizer=2,
-                                     optimizer=kernel1.optimize_hyperparameter,  # we currently need this, to prevent derivation of the kernel
+                                     optimizer=hkernel.optimize_hyperparameter,  # we currently need this, to prevent derivation of the kernel
                                      normalize_y=False)
 
     print("start fitting")
