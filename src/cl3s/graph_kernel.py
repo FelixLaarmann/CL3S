@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.linalg import cholesky
 
 from sklearn.base import clone
 from sklearn.gaussian_process.kernels import GenericKernelMixin, NormalizedKernelMixin, Hyperparameter, Kernel
@@ -20,19 +21,32 @@ class WeisfeilerLehmanKernel(GenericKernelMixin, NormalizedKernelMixin, Kernel, 
     """ Weisfeiler Lehman Kernel for derivation trees. """
 
     def __init__(self, n_iter=1, base_graph_kernel=VertexHistogram, normalize=True, to_grakel_graph=None, n_jobs=None):
-        self.n_iter = int(n_iter)
+        self.n_iter = 1 if n_iter < 1 else int(n_iter) if n_iter <= 3 else 3
+        self.n_iter_bounds = (1, 3)
         self.base_graph_kernel = base_graph_kernel
         self.normalize = normalize
         self.to_grakel_graph = to_grakel_graph
         self.n_jobs = n_jobs
 
-    """
+
     @property
     def hyperparameter_n_iter(self):
         return Hyperparameter(
-            "n_iter", "numeric", (1, self.n_iter * 2)
+            "n_iter", "numeric", self.n_iter_bounds
         )
-    """
+
+    def optimize_hyperparameter(self, obj_fun, initial_theta, bounds):
+        theta_opt = initial_theta
+        func_min = obj_fun(theta_opt, eval_gradient=False)
+        for _ in range(100):
+            for b in bounds:
+                theta = np.array([np.random.uniform(b[0], b[1])])
+                f_val = obj_fun(theta, eval_gradient=False)
+                if f_val < func_min:
+                    func_min = f_val
+                    theta_opt = theta
+        return theta_opt, func_min
+
 
     def _f(self, t1: DerivationTree[NT, T, G], t2: DerivationTree[NT, T, G]) -> float:
         """
@@ -45,7 +59,7 @@ class WeisfeilerLehmanKernel(GenericKernelMixin, NormalizedKernelMixin, Kernel, 
             g1 = self.to_grakel_graph(t1)
             g2 = self.to_grakel_graph(t2)
         wl_kernel = WeisfeilerLehman(
-            n_iter=self.n_iter,
+            n_iter=int(self.n_iter) if self.n_iter >= 1 else int(1),
             base_graph_kernel=self.base_graph_kernel,
             normalize=self.normalize,
             n_jobs=self.n_jobs,
@@ -75,26 +89,25 @@ class WeisfeilerLehmanKernel(GenericKernelMixin, NormalizedKernelMixin, Kernel, 
         if Y is None:
             Y = X
 
+        K = np.array([[self._f(x, y) for y in Y] for x in X])
+
         if eval_gradient:
+            # try to compute the inverse of K using cholesky decomposition for numerical stability
+            try:
+                K_i = cholesky(K + 1e-10 * np.eye(K.shape[0]), lower=True)
+                K_inv = np.linalg.solve(K_i.T, np.linalg.solve(K_i, np.eye(K.shape[0])))
+            except np.linalg.LinAlgError:
+                K_inv = np.linalg.pinv(K)
+            expected_shape = K_inv.shape + (1,)
             return (
-                np.array([[self._f(x, y) for y in Y] for x in X]),
-                np.array([[[self._g(x, y)] for y in Y] for x in X]),
+                K,
+                K_inv.reshape(expected_shape),
             )
         else:
-            #wl_kernel = WeisfeilerLehman(
-            #    n_iter= self.n_iter,
-            #    base_graph_kernel=self.base_graph_kernel,
-            #    normalize=self.normalize,
-            #)
-            # gs = [x.to_grakel_graph() for x in X]
-            # return wl_kernel.fit_transform(gs)
             return np.array([[self._f(x, y) for y in Y] for x in X])
-            #nxs = [tree.to_indexed_nx_digraph()[0].to_undirected() for tree in X]
-            #GS = graph_from_networkx(nxs, node_labels_tag='symbol', edge_labels_tag='argument_type')
-            #return wl_kernel.fit_transform(GS)
 
     def is_stationary(self):
-        return False
+        return True
 
     def clone_with_theta(self, theta):
         cloned = clone(self)
@@ -105,7 +118,7 @@ class HierarchicalWeisfeilerLehmanKernel(GenericKernelMixin, NormalizedKernelMix
     """ Weisfeiler Lehman Kernel for derivation trees. """
 
     def __init__(self, to_graph_list, weights, n_iters, base_graph_kernel=VertexHistogram, normalize=True, n_jobs=None):
-        if len(to_graph_list) != len(weights):
+        if len(to_graph_list) != len(weights) or len(to_graph_list) != len(n_iters):
             raise ValueError("The number of to_graph functions must be equal to the number of weights.")
         self.to_graphs = to_graph_list
         self.weights = weights
@@ -169,7 +182,7 @@ class HierarchicalWeisfeilerLehmanKernel(GenericKernelMixin, NormalizedKernelMix
             return np.array([[self._f(x, y) for y in Y] for x in X])
 
     def is_stationary(self):
-        return False
+        return True
 
     def clone_with_theta(self, theta):
         cloned = clone(self)

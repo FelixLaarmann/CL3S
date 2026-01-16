@@ -1491,10 +1491,12 @@ if __name__ == "__main__":
 
     alpha = 1e-10
 
+    print(kernel1.bounds)
+
     model = GaussianProcessRegressor(kernel=kernel1,
                                      alpha=alpha,
-                                     # n_restarts_optimizer=10,
-                                     optimizer=None,  # we currently need this, to prevent derivation of the kernel
+                                     n_restarts_optimizer=2,
+                                     optimizer=kernel1.optimize_hyperparameter,  # we currently need this, to prevent derivation of the kernel
                                      normalize_y=False)
 
     print("start fitting")
