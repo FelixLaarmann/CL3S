@@ -31,7 +31,7 @@ class WeisfeilerLehmanKernel(GenericKernelMixin, NormalizedKernelMixin, Kernel, 
     @property
     def hyperparameter_n_iter(self):
         return Hyperparameter(
-            "n_iter", "numeric", (1, 3)
+            "n_iter", "numeric", (1, 3), fixed=True
         )
 
     def optimize_hyperparameter(self, obj_fun, initial_theta, bounds):
@@ -85,10 +85,34 @@ class WeisfeilerLehmanKernel(GenericKernelMixin, NormalizedKernelMixin, Kernel, 
         raise NotImplementedError("How do you derive a Weisfeiler Lehman kernel?")
 
     def __call__(self, X, Y=None, eval_gradient=False):
+        #"""
+        if self.to_grakel_graph is None:
+            x_interpreted = [t.to_grakel_graph().__next__() for t in X]
+        else:
+            x_interpreted = [self.to_grakel_graph(t).__next__() for t in X]
         if Y is None:
-            Y = X
+            y_interpreted = x_interpreted
+        else:
+            if self.to_grakel_graph is None:
+                y_interpreted = [t.to_grakel_graph().__next__() for t in Y]
+            else:
+                y_interpreted = [self.to_grakel_graph(t).__next__() for t in Y]
+        #"""
+        #if Y is None:
+        #    Y = X
+        #"""
+        wl_kernel = WeisfeilerLehman(
+            n_iter=int(self.n_iter) if self.n_iter >= 1 else int(1),
+            base_graph_kernel=self.base_graph_kernel,
+            normalize=self.normalize,
+            n_jobs=self.n_jobs,
+        )
 
-        K = np.array([[self._f(x, y) for y in Y] for x in X])
+        wl_kernel.fit_transform(y_interpreted)
+
+        K = wl_kernel.transform(x_interpreted)
+        #"""
+        #K = np.array([[self._f(x, y) for y in Y] for x in X])
 
         if eval_gradient:
             # try to compute the inverse of K using cholesky decomposition for numerical stability
@@ -103,7 +127,7 @@ class WeisfeilerLehmanKernel(GenericKernelMixin, NormalizedKernelMixin, Kernel, 
                 K_inv.reshape(expected_shape),
             )
         else:
-            return np.array([[self._f(x, y) for y in Y] for x in X])
+            return K
 
     def is_stationary(self):
         return True
@@ -169,16 +193,54 @@ class HierarchicalWeisfeilerLehmanKernel(GenericKernelMixin, NormalizedKernelMix
         raise NotImplementedError("How do you derive a Graph kernel?")
 
     def __call__(self, X, Y=None, eval_gradient=False):
-        if Y is None:
-            Y = X
+        #if Y is None:
+        #    Y = X
+
+        weighted_Ks = []
+        for to_graph, w, i in zip(self.to_graphs, self.weights, self.n_iters):
+            if to_graph is None:
+                x_interpreted = [t.to_grakel_graph().__next__() for t in X]
+            else:
+                x_interpreted = [to_graph(t).__next__() for t in X]
+            if Y is None:
+                y_interpreted = x_interpreted
+            else:
+                if to_graph is None:
+                    y_interpreted = [t.to_grakel_graph().__next__() for t in Y]
+                else:
+                    y_interpreted = [to_graph(t).__next__() for t in Y]
+
+            wl_kernel = WeisfeilerLehman(
+                n_iter=i,
+                base_graph_kernel=self.base_graph_kernel,
+                normalize=self.normalize,
+                n_jobs=self.n_jobs,
+            )
+
+            wl_kernel.fit_transform(y_interpreted)
+
+            K = wl_kernel.transform(x_interpreted)
+
+            weighted_K = w * K
+            weighted_Ks.append(weighted_K)
+
+        K = sum(weighted_Ks)
+        assert(isinstance(K, np.ndarray))
 
         if eval_gradient:
+            # try to compute the inverse of K using cholesky decomposition for numerical stability
+            try:
+                K_i = cholesky(K + 1e-10 * np.eye(K.shape[0]), lower=True)
+                K_inv = np.linalg.solve(K_i.T, np.linalg.solve(K_i, np.eye(K.shape[0])))
+            except np.linalg.LinAlgError:
+                K_inv = np.linalg.pinv(K)
+            expected_shape = K_inv.shape + (1,)
             return (
-                np.array([[self._f(x, y) for y in Y] for x in X]),
-                np.array([[[self._g(x, y)] for y in Y] for x in X]),
+                K,
+                K_inv.reshape(expected_shape),
             )
         else:
-            return np.array([[self._f(x, y) for y in Y] for x in X])
+            return K
 
     def is_stationary(self):
         return True
@@ -211,25 +273,25 @@ class OptimizableHierarchicalWeisfeilerLehmanKernel(GenericKernelMixin, Normaliz
     @property
     def hyperparameter_n_iter1(self):
         return Hyperparameter(
-            "n_iter1", "numeric", (1, 3)
+            "n_iter1", "numeric", (1, 3), fixed=True
         )
 
     @property
     def hyperparameter_n_iter2(self):
         return Hyperparameter(
-            "n_iter2", "numeric", (1, 3)
+            "n_iter2", "numeric", (1, 3), fixed=True
         )
 
     @property
     def hyperparameter_n_iter3(self):
         return Hyperparameter(
-            "n_iter3", "numeric", (1, 3)
+            "n_iter3", "numeric", (1, 3), fixed=True
         )
 
     @property
     def hyperparameter_weight1(self):
         return Hyperparameter(
-            "weight1", "numeric", (1, 100)
+            "weight1", "numeric", (1, 100),
         )
 
     @property
@@ -247,15 +309,16 @@ class OptimizableHierarchicalWeisfeilerLehmanKernel(GenericKernelMixin, Normaliz
     def optimize_hyperparameter(self, obj_fun, initial_theta, bounds):
         theta_opt = initial_theta
         func_min = obj_fun(theta_opt, eval_gradient=False)
-        n_iter_bounds = bounds[:3]
-        n_i = n_iter_bounds[0]
-        weight_bounds = bounds[3:]
+        # uncomment following, if n_iter isn't fixed anymore
+        #n_iter_bounds = bounds[:3]
+        #n_i = n_iter_bounds[0]
+        weight_bounds = bounds#[3:]
         n_w = weight_bounds[0]
         for _ in range(10):
-            theta_i = np.random.uniform(n_i[0], n_i[1], 3)
+            #theta_i = np.random.uniform(n_i[0], n_i[1], 3)
             theta_w = np.random.uniform(n_w[0], n_w[1], 3)
             theta_w = np.array([x / sum(theta_w) * n_w[1] for x in theta_w])
-            theta = np.concatenate((theta_i, theta_w), axis=None)
+            theta = theta_w #np.concatenate((theta_i, theta_w), axis=None)
             f_val = obj_fun(theta, eval_gradient=False)
             if f_val < func_min:
                 func_min = f_val
@@ -307,10 +370,43 @@ class OptimizableHierarchicalWeisfeilerLehmanKernel(GenericKernelMixin, Normaliz
         raise NotImplementedError("How do you derive a Graph kernel?")
 
     def __call__(self, X, Y=None, eval_gradient=False):
-        if Y is None:
-            Y = X
+        #if Y is None:
+        #    Y = X
+#
+        weighted_Ks = []
+        for to_graph, w, i in zip([self.to_grakel_graph1, self.to_grakel_graph2, self.to_grakel_graph3],
+                                  [self.weight1, self.weight2, self.weight3],
+                                  [self.n_iter1, self.n_iter2, self.n_iter3]):
+            if to_graph is None:
+                x_interpreted = [t.to_grakel_graph().__next__() for t in X]
+            else:
+                x_interpreted = [to_graph(t).__next__() for t in X]
+            if Y is None:
+                y_interpreted = x_interpreted
+            else:
+                if to_graph is None:
+                    y_interpreted = [t.to_grakel_graph().__next__() for t in Y]
+                else:
+                    y_interpreted = [to_graph(t).__next__() for t in Y]
 
-        K = np.array([[self._f(x, y) for y in Y] for x in X])
+            wl_kernel = WeisfeilerLehman(
+                n_iter=i,
+                base_graph_kernel=self.base_graph_kernel,
+                normalize=self.normalize,
+                n_jobs=self.n_jobs,
+            )
+
+            wl_kernel.fit_transform(y_interpreted)
+
+            K = wl_kernel.transform(x_interpreted)
+
+            weighted_K = w * K
+            weighted_Ks.append(weighted_K)
+
+        K = sum(weighted_Ks)
+        assert (isinstance(K, np.ndarray))
+
+        #K = np.array([[self._f(x, y) for y in Y] for x in X])
 
         if eval_gradient:
             # try to compute the inverse of K using cholesky decomposition for numerical stability
@@ -325,7 +421,7 @@ class OptimizableHierarchicalWeisfeilerLehmanKernel(GenericKernelMixin, Normaliz
                 K_inv.reshape(expected_shape),
             )
         else:
-            return np.array([[self._f(x, y) for y in Y] for x in X])
+            return K
 
     def is_stationary(self):
         return True

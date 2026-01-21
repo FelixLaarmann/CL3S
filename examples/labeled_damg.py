@@ -1302,7 +1302,8 @@ if __name__ == "__main__":
                             Constructor("input", Literal(1))
                             & Constructor("output", Literal(1))
                             & Constructor("structure", Literal(
-                                ((None,), (None, None), (None, None), (None,), (None,))
+                                ((None,), (None, None, None), (None, None, None), (None, None, None), (None, None), (None,None), (None,))
+                                #((None,), (None, None), (None, None), (None,), (None,))
                                 #((None,), (None, None), (None,))
                             )))
 
@@ -1363,7 +1364,7 @@ if __name__ == "__main__":
     """
     term = list(search_space.enumerate_trees(target, 2))[0]
 
-    terms = list(search_space.enumerate_trees(target, 10))
+    terms = list(search_space.sample(10, target))  #enumerate_trees(target, 500))
 
     def to_grakel_graph(t):
         p = t.interpret(repo.edgelist_algebra())
@@ -1417,7 +1418,7 @@ if __name__ == "__main__":
 
         return gk_graph
 
-    kernel0 = WeisfeilerLehmanKernel(to_grakel_graph=to_grakel_graph)
+    kernel0 = WeisfeilerLehmanKernel(to_grakel_graph=to_grakel_graph, n_jobs=None)
 
     kernel1 = WeisfeilerLehmanKernel(to_grakel_graph=to_grakel_graph_detailed)
 
@@ -1427,6 +1428,15 @@ if __name__ == "__main__":
                                                             to_grakel_graph3=to_grakel_graph_detailed,
                                                             weight1=0.1, weight2=0.5, weight3=0.4,
                                                             n_iter1=1, n_iter2=1, n_iter3=1)
+
+    import time
+
+    print(f"computing matrix for kernel0 with size {len(terms)} x {len(terms)}")
+    start = time.time()
+    K0 = hkernel(terms)
+    end = time.time()
+    print(f"done in {end - start} seconds")
+
 
     def fit0(t):
         return kernel0._f(term, t)
@@ -1508,7 +1518,7 @@ if __name__ == "__main__":
 
     print("finished fitting")
 
-    acquisition_function = SimplifiedExpectedImprovement(model, True)
+    #acquisition_function = SimplifiedExpectedImprovement(model, True)
 
     acquisition_function2 = ExpectedImprovement(model, True)
 
@@ -1520,7 +1530,7 @@ if __name__ == "__main__":
         print(x in model.X_train_)
         print(x.interpret(repo.pretty_term_algebra()))
         print(fit1(x))
-        print(acquisition_function(x))
+        #print(acquisition_function(x))
         print(acquisition_function2(x))
         print("-----")
 
@@ -1531,7 +1541,7 @@ if __name__ == "__main__":
     for x in test + test2:
         print(x.interpret(repo.pretty_term_algebra()))
         print(fit1(x))
-        print(acquisition_function(x))
+        #print(acquisition_function(x))
         print(acquisition_function2(x))
         print("-----")
 
