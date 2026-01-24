@@ -1418,7 +1418,7 @@ if __name__ == "__main__":
 
         return gk_graph
 
-    kernel0 = WeisfeilerLehmanKernel(to_grakel_graph=to_grakel_graph, n_jobs=None)
+    kernel0 = WeisfeilerLehmanKernel(to_grakel_graph=to_grakel_graph)
 
     kernel1 = WeisfeilerLehmanKernel(to_grakel_graph=to_grakel_graph_detailed)
 
@@ -1428,7 +1428,7 @@ if __name__ == "__main__":
                                                             to_grakel_graph3=to_grakel_graph_detailed,
                                                             weight1=0.1, weight2=0.5, weight3=0.4,
                                                             n_iter1=1, n_iter2=1, n_iter3=1)
-
+    """
     import time
 
     print(f"computing matrix for kernel0 with size {len(terms)} x {len(terms)}")
@@ -1436,7 +1436,7 @@ if __name__ == "__main__":
     K0 = hkernel(terms)
     end = time.time()
     print(f"done in {end - start} seconds")
-
+    """
 
     def fit0(t):
         return kernel0._f(term, t)
@@ -1491,7 +1491,7 @@ if __name__ == "__main__":
         print(kernel1._f(term, next_result))
     """
 
-    #"""
+    """
     x_list = []
     y_list = []
 
@@ -1560,12 +1560,12 @@ if __name__ == "__main__":
 
     print(kernel1._f(term, result))
     print(acquisition_function2(result))
-    #"""
-
-
     """
-    bo = BayesianOptimization(search_space, target, kernel=kernel1, population_size=100, crossover_rate=0.85,
-                              mutation_rate=0.35, generation_limit=10, tournament_size=10,
+
+
+    #"""
+    bo = BayesianOptimization(search_space, target, kernel=kernel1, population_size=5, crossover_rate=0.85,
+                              mutation_rate=0.35, generation_limit=10, tournament_size=2,
                               enforce_diversity=False, elitism=1)
     print("starting bayesian optimisation")
     tree_bo, X, Y = bo.bayesian_optimisation(3, fit1, greater_is_better=True, n_pre_samples=10)
@@ -1622,4 +1622,4 @@ if __name__ == "__main__":
         plt.figtext(0.01, 0.02, t.interpret(repo.pretty_term_algebra()), fontsize=14)
 
         #plt.show()
-    """
+    #"""

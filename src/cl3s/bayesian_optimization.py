@@ -58,8 +58,21 @@ class BayesianOptimization(Generic[NT, T, G]):
         y_list = []
 
         if x0 is None:
-            # Sample n_pre_samples initial points from grammar
-            x0 = list(self.search_space.sample(n_pre_samples, self.request))
+            # Sample n_pre_samples initial points from grammar, without duplicates under the kernel
+            next = self.search_space.sample_tree(self.request)
+            x0 = []
+            while len(x0) < n_pre_samples:
+                is_duplicate = False
+                for tree in x0:
+                    k = self.kernel._f(next, tree)
+                    if k > 0.99:  # almost identical
+                        is_duplicate = True
+                        break
+                if not is_duplicate:
+                    x0.append(next)
+                next = self.search_space.sample_tree(self.request)
+
+            #x0 = list(self.search_space.sample(n_pre_samples, self.request))
             for tree in x0:
                 x_list.append(tree)
                 y_list.append(obj_fun(tree))
@@ -72,7 +85,19 @@ class BayesianOptimization(Generic[NT, T, G]):
         Make sure we have at least n_pre_samples samples before starting the BO loop    
         """
         while x_size < n_pre_samples:
-            x1 = list(self.search_space.sample(n_pre_samples - x_size, self.request))
+            next = self.search_space.sample_tree(self.request)
+            x1 = []
+            while len(x1) < (n_pre_samples - x_size):
+                is_duplicate = False
+                for tree in x1:
+                    k = self.kernel._f(next, tree)
+                    if k > 0.99:  # almost identical
+                        is_duplicate = True
+                        break
+                if not is_duplicate:
+                    x1.append(next)
+                next = self.search_space.sample_tree(self.request)
+            #x1 = list(self.search_space.sample(n_pre_samples - x_size, self.request))
             for tree in x1:
                 x_list.append(tree)
                 y_list.append(obj_fun(tree))
@@ -116,8 +141,12 @@ class BayesianOptimization(Generic[NT, T, G]):
             next_sample = optimizer()
             print(f"next_sample in x_list: {next_sample in x_list}")
 
+            def identical(t1, t2):
+                k = self.kernel._f(t1, t2)
+                return k > 0.99  # almost identical
+
             # Duplicates will break the GP. In case of a duplicate, we will randomly sample a next query point.
-            while next_sample in x_list:
+            while any(identical(next_sample, t) for t in x_list):
                 # print("Duplicate detected. Sampling randomly.")
                 next_sample = self.search_space.sample_tree(self.request)
 
