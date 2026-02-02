@@ -158,54 +158,52 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
             params: list[G] = [lit for lit in candidate.arguments if isinstance(lit, ConstantArgument)]
             cands: tuple[DerivationTree[NT, T, G], ...] = tuple(
                 map(lambda p: DerivationTree(p.value, tuple(),
-                                             derived_from=None, rhs_rule=candidate, frozen=False,
-                                             is_literal=True, literal_group=p.origin), params))
+                                            derived_from=None, rhs_rule=candidate, frozen=False,
+                                            is_literal=True, literal_group=p.origin), params))
             if all(predicate({}) for predicate in candidate.predicates):
                 return DerivationTree(candidate.terminal, cands, derived_from=nt, rhs_rule=candidate,
-                                      is_literal=False, literal_group=None, frozen=False)
+                                        is_literal=False, literal_group=None, frozen=False)
             else:
                 return None
         else:
             # rule derives non-terminals
             children: tuple[DerivationTree[NT, T, G], ...] = ()
             substitution: dict[str, DerivationTree[NT, T, G]] = {}
-            interleave: Callable[[Mapping[str, DerivationTree[NT, T, G]]], tuple[DerivationTree[NT, T, G], ...]] = \
-                lambda subs: tuple(
-                    subs[t] if isinstance(t, str) else t for t in [
-                        DerivationTree(p.value, tuple(), derived_from=None, rhs_rule=candidate,
-                                       is_literal=True, literal_group=p.origin, frozen=False)
-                        if isinstance(p, ConstantArgument)
-                        else p.name
-                        for p in candidate.arguments
-                    ]
-            )
-            for _ in range(100):  # self.cost): # TODO: handle cost differently!
-                for arg in candidate.arguments:
-                    if isinstance(arg, NonTerminalArgument):
-                        child_depth = self._annotated_symbol_depths.get(arg.origin)
-                        if child_depth is None:
-                            child_depth = self.max_tree_depth
-                        if cs + child_depth <= self.max_tree_depth:
-                            new_cs = cs + child_depth
-                            child_tree: DerivationTree[NT, T, G] | None = self.sample_random_term_annotated(arg.origin, new_cs)
-                            if child_tree is not None and arg.name is not None:
-                                children = children + (child_tree,)
-                                substitution[arg.name] = child_tree
-                            else:
-                                return None
-                        else:
-                            return None
-                if all(predicate(substitution | candidate.literal_substitution) for predicate in candidate.predicates):
-                    return DerivationTree(
-                        candidate.terminal,
-                        interleave(substitution),
-                        derived_from=nt,
-                        rhs_rule=candidate,
-                        is_literal=False,
-                        literal_group=None,
-                        frozen=False
-                    )
-            return None
+
+            for a in candidate.arguments:
+                if isinstance(a, NonTerminalArgument):
+                    child_depth = self._annotated_symbol_depths.get(a.origin)
+                    if child_depth is None:
+                        child_depth = self.max_tree_depth
+                    if cs + child_depth <= self.max_tree_depth:
+                        new_cs = cs + child_depth
+                        child_tree = self.sample_random_term_annotated(a.origin, new_cs)
+                        while child_tree is None:
+                            child_tree = self.sample_random_term_annotated(a.origin, new_cs)
+                        if child_tree is not None:
+                            children = children + (child_tree,)
+                            if a.name is not None:
+                                substitution[a.name] = child_tree
+                    else:
+                        return None
+                elif isinstance(a, ConstantArgument):
+                    children = children + (DerivationTree(a.value, tuple(), derived_from=None, rhs_rule=candidate,
+                                                          is_literal=True, literal_group=a.origin, frozen=False),)
+                else:
+                    raise ValueError("rule argument is neither NonTerminalArgument nor ConstantArgument")
+
+            if all((predicate(substitution | candidate.literal_substitution) for predicate in candidate.predicates)):
+                return DerivationTree(
+                    candidate.terminal,
+                    children,
+                    derived_from=nt,
+                    rhs_rule=candidate,
+                    is_literal=False,
+                    literal_group=None,
+                    frozen=False
+                )
+            else:
+                return None
 
     def build_tree(self, nt: NT, candidate: RHSRule[NT, T, G]) -> DerivationTree[NT, T, G] | None:
         if not list(candidate.non_terminals):
@@ -304,7 +302,7 @@ class SearchSpace(SolutionSpace[NT, T, G], Generic[NT, T, G]):
             if max_depth is not None:
                 self.max_tree_depth = max_depth
             else:
-                self.max_tree_depth = self.min_size + 10000
+                self.max_tree_depth = self.min_size + 100
             if self.max_tree_depth < self.min_size:
                 raise ValueError(f"max_tree_depth {self.max_tree_depth} is less than minimum tree depth {self.min_size}")
             # for _ in range(size*10):
